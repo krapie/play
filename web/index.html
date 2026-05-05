@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-theme="dark">
+<html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -8,7 +8,7 @@
   <link rel="manifest" href="/manifest.json" />
   <link rel="stylesheet" href="/colors_and_type.css" />
   <meta name="description" content="Small interactive experiments by Kevin Park." />
-  <meta name="theme-color" content="#0a0a0a" />
+  <meta name="theme-color" content="#ffffff" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="play" />
@@ -20,130 +20,235 @@
   <meta name="twitter:title" content="play — kevinprk" />
   <meta name="twitter:description" content="Small interactive experiments by Kevin Park." />
   <style>
-    *, *::before, *::after { box-sizing: border-box; }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
     html, body {
-      margin: 0; padding: 0;
-      min-height: 100%;
       background: var(--kp-bg);
       color: var(--kp-fg);
       font-family: var(--kp-font-sans);
+      -webkit-font-smoothing: antialiased;
+      font-size: var(--kp-text-base);
+      line-height: var(--kp-leading-normal);
+      min-height: 100vh;
     }
 
-    header {
+    a { color: inherit; text-decoration: none; }
+    button { font: inherit; cursor: pointer; background: none; border: none; color: inherit; }
+
+    .page { min-height: 100vh; display: flex; flex-direction: column; }
+
+    /* ---------- Theme toggle ---------- */
+    .theme-toggle {
+      position: fixed; top: 18px; right: 18px;
+      width: 32px; height: 32px;
+      border-radius: var(--kp-radius-sm);
+      display: grid; place-items: center;
+      color: var(--kp-fg-2);
+      transition: background var(--kp-dur-fast) var(--kp-ease), color var(--kp-dur-fast) var(--kp-ease);
+      z-index: 10;
+    }
+    .theme-toggle:hover { background: var(--kp-hover-bg); color: var(--kp-fg); }
+    .theme-toggle svg { width: 16px; height: 16px; }
+
+    /* ---------- Header ---------- */
+    .kp-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: var(--kp-space-5) var(--kp-space-6);
+      padding: var(--kp-space-5) var(--kp-page-pad);
+      max-width: var(--kp-content-width);
+      width: 100%;
+      margin: 0 auto;
+    }
+    .brand {
+      display: flex; align-items: center; gap: 10px;
+      font-size: var(--kp-text-md);
+      font-weight: var(--kp-weight-semi);
+      letter-spacing: var(--kp-tracking-snug);
+    }
+    .pi-mark {
+      width: 24px; height: 24px;
+      border-radius: var(--kp-radius-sm);
+      background: var(--kp-fg);
+      color: var(--kp-bg);
+      display: grid; place-items: center;
+      font-size: 14px; font-weight: 500;
+      flex-shrink: 0;
+      text-decoration: none;
+    }
+    .kp-header nav {
+      display: flex; gap: var(--kp-space-5);
+      font-size: var(--kp-text-sm);
+      color: var(--kp-fg-2);
+    }
+    .kp-header nav a {
+      transition: color var(--kp-dur-fast) var(--kp-ease);
+    }
+    .kp-header nav a:hover { color: var(--kp-fg); }
+
+    /* ---------- Main ---------- */
+    .kp-main {
+      max-width: var(--kp-content-width);
+      margin: 0 auto;
+      width: 100%;
+      padding: var(--kp-space-7) var(--kp-page-pad) var(--kp-space-9);
+      flex: 1;
+    }
+
+    .intro { margin-bottom: var(--kp-space-8); }
+    .intro h1 {
+      font-size: var(--kp-text-3xl);
+      font-weight: var(--kp-weight-semi);
+      letter-spacing: var(--kp-tracking-tight);
+      line-height: var(--kp-leading-tight);
+      color: var(--kp-fg);
+      margin-bottom: var(--kp-space-4);
+    }
+    .intro p {
+      font-size: var(--kp-text-md);
+      line-height: var(--kp-leading-relaxed);
+      color: var(--kp-fg-2);
+      max-width: 56ch;
+    }
+
+    .section-label {
+      font-size: var(--kp-text-xs);
+      font-family: var(--kp-font-mono);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--kp-fg-3);
+      margin-bottom: var(--kp-space-3);
+      padding-bottom: var(--kp-space-2);
       border-bottom: 1px solid var(--kp-border);
     }
 
-    .pi-mark {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: 24px; height: 24px;
-      background: var(--kp-fg);
-      border-radius: var(--kp-radius-sm);
-      color: var(--kp-bg);
-      font-family: var(--kp-font-serif);
-      font-size: 14px;
-      text-decoration: none;
-      flex-shrink: 0;
-    }
-
-    .site-title {
-      font-family: var(--kp-font-mono);
-      font-size: var(--kp-text-sm);
-      letter-spacing: var(--kp-tracking-mono);
-      color: var(--kp-fg-3);
-    }
-
-    main {
-      max-width: var(--kp-content-width);
-      margin: 0 auto;
-      padding: var(--kp-space-8) var(--kp-space-6);
-    }
-
-    h1 {
-      font-size: var(--kp-text-2xl);
-      font-weight: var(--kp-weight-semi);
-      letter-spacing: var(--kp-tracking-tight);
-      color: var(--kp-fg);
-      margin: 0 0 var(--kp-space-2);
-    }
-
-    .subtitle {
-      font-size: var(--kp-text-sm);
-      color: var(--kp-fg-3);
-      margin: 0 0 var(--kp-space-8);
-    }
-
-    .grid {
+    /* ---------- Experiment row ---------- */
+    .exp-row {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      grid-template-columns: 32px 1fr auto;
+      align-items: center;
       gap: var(--kp-space-4);
-    }
-
-    .card {
-      display: block;
-      padding: var(--kp-space-5);
-      border: 1px solid var(--kp-border);
-      border-radius: var(--kp-radius-md);
+      padding: var(--kp-space-4) var(--kp-space-3);
+      border-bottom: 1px solid var(--kp-border-faint);
+      cursor: pointer;
+      transition: background var(--kp-dur-fast) var(--kp-ease);
       text-decoration: none;
       color: inherit;
-      transition:
-        border-color var(--kp-dur-base) var(--kp-ease),
-        background var(--kp-dur-base) var(--kp-ease);
+      width: 100%;
     }
-    .card:hover {
-      border-color: var(--kp-border-strong);
-      background: var(--kp-hover-bg);
-    }
+    .exp-row:hover { background: var(--kp-hover-bg); }
+    .exp-row:active { background: var(--kp-press-bg); }
 
-    .card-name {
-      font-family: var(--kp-font-mono);
-      font-size: var(--kp-text-sm);
+    .exp-glyph { font-size: 22px; line-height: 1; }
+
+    .exp-text .name {
+      font-size: var(--kp-text-md);
       font-weight: var(--kp-weight-medium);
-      letter-spacing: var(--kp-tracking-mono);
       color: var(--kp-fg);
-      margin: 0 0 var(--kp-space-2);
+      letter-spacing: -0.005em;
+    }
+    .exp-text .desc {
+      font-size: var(--kp-text-sm);
+      color: var(--kp-fg-2);
+      margin-top: 2px;
     }
 
-    .card-desc {
+    .exp-arrow {
+      font-family: var(--kp-font-mono);
       font-size: var(--kp-text-sm);
       color: var(--kp-fg-3);
-      line-height: var(--kp-leading-normal);
-      margin: 0;
+      transition: transform var(--kp-dur-fast) var(--kp-ease), color var(--kp-dur-fast) var(--kp-ease);
     }
+    .exp-row:hover .exp-arrow { color: var(--kp-fg); transform: translateX(3px); }
 
-    footer {
-      padding: var(--kp-space-6);
-      border-top: 1px solid var(--kp-border);
-      text-align: center;
-      font-family: var(--kp-font-mono);
+    /* ---------- Footer ---------- */
+    .kp-footer {
+      max-width: var(--kp-content-width);
+      margin: 0 auto;
+      width: 100%;
+      padding: var(--kp-space-6) var(--kp-page-pad);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
       font-size: var(--kp-text-xs);
-      color: var(--kp-fg-4);
+      font-family: var(--kp-font-mono);
+      color: var(--kp-fg-3);
+      letter-spacing: -0.005em;
     }
+    .kp-footer .pi { font-family: var(--kp-font-sans); font-size: 14px; color: var(--kp-fg-2); }
   </style>
 </head>
 <body>
-  <header>
-    <a href="https://kevinprk.com" class="pi-mark" aria-label="kevinprk.com">π</a>
-    <span class="site-title">play.kevinprk.com</span>
-  </header>
+  <div class="page">
 
-  <main>
-    <h1>play</h1>
-    <p class="subtitle">Small interactive experiments.</p>
+    <button class="theme-toggle" id="themeToggle" aria-label="toggle theme" title="toggle theme">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M21 12.79A9 9 0 1111.21 3a7 7 0 009.79 9.79z"/>
+      </svg>
+    </button>
 
-    <div class="grid">
-      <a href="/fire/" class="card">
-        <p class="card-name">campfire</p>
-        <p class="card-desc">A cozy campfire in the dark.</p>
-      </a>
-    </div>
-  </main>
+    <header>
+      <div class="kp-header">
+        <div class="brand">
+          <a href="https://kevinprk.com" class="pi-mark" aria-label="kevinprk.com">π</a>
+          play
+        </div>
+        <nav>
+          <a href="https://kevinprk.com">kevinprk.com</a>
+        </nav>
+      </div>
+    </header>
 
-  <footer>π</footer>
+    <main class="kp-main">
+      <section class="intro">
+        <h1>Small experiments.</h1>
+        <p>things I made for no particular reason. interactive, visual, or just odd.</p>
+      </section>
+
+      <section>
+        <div class="section-label">experiments</div>
+        <div role="list">
+          <a href="/fire/" class="exp-row" role="listitem">
+            <span class="exp-glyph">🔥</span>
+            <div class="exp-text">
+              <div class="name">Campfire</div>
+              <div class="desc">a cozy campfire in the dark</div>
+            </div>
+            <span class="exp-arrow">→</span>
+          </a>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <div class="kp-footer">
+        <span>© <span id="year"></span> kevin park</span>
+        <span class="pi">π</span>
+      </div>
+    </footer>
+
+  </div>
+
+  <script>
+    document.getElementById("year").textContent = new Date().getFullYear();
+
+    const html = document.documentElement;
+    const btn = document.getElementById("themeToggle");
+    const sunIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="4"/><path stroke-linecap="round" d="M12 3v1.5M12 19.5V21M3 12h1.5M19.5 12H21M5.6 5.6l1.06 1.06M17.34 17.34l1.06 1.06M5.6 18.4l1.06-1.06M17.34 6.66l1.06-1.06"/></svg>`;
+    const moonIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M21 12.79A9 9 0 1111.21 3a7 7 0 009.79 9.79z"/></svg>`;
+
+    let theme = localStorage.getItem("kp-theme") || "light";
+    function applyTheme(t) {
+      html.setAttribute("data-theme", t);
+      btn.innerHTML = t === "dark" ? sunIcon : moonIcon;
+      localStorage.setItem("kp-theme", t);
+    }
+    applyTheme(theme);
+
+    btn.addEventListener("click", () => {
+      theme = theme === "light" ? "dark" : "light";
+      applyTheme(theme);
+    });
+  </script>
 </body>
 </html>
