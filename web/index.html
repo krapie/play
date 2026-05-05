@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>play — kevinprk</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <link rel="manifest" href="/manifest.json" />
+  <link rel="stylesheet" href="/colors_and_type.css" />
+  <meta name="description" content="Small interactive experiments by Kevin Park." />
+  <meta name="theme-color" content="#0a0a0a" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="play" />
+  <meta property="og:title" content="play — kevinprk" />
+  <meta property="og:description" content="Small interactive experiments by Kevin Park." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://play.kevinprk.com" />
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="play — kevinprk" />
+  <meta name="twitter:description" content="Small interactive experiments by Kevin Park." />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body {
+      margin: 0; padding: 0;
+      min-height: 100%;
+      background: var(--kp-bg);
+      color: var(--kp-fg);
+      font-family: var(--kp-font-sans);
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: var(--kp-space-5) var(--kp-space-6);
+      border-bottom: 1px solid var(--kp-border);
+    }
+
+    .pi-mark {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px; height: 24px;
+      background: var(--kp-fg);
+      border-radius: var(--kp-radius-sm);
+      color: var(--kp-bg);
+      font-family: var(--kp-font-serif);
+      font-size: 14px;
+      text-decoration: none;
+      flex-shrink: 0;
+    }
+
+    .site-title {
+      font-family: var(--kp-font-mono);
+      font-size: var(--kp-text-sm);
+      letter-spacing: var(--kp-tracking-mono);
+      color: var(--kp-fg-3);
+    }
+
+    main {
+      max-width: var(--kp-content-width);
+      margin: 0 auto;
+      padding: var(--kp-space-8) var(--kp-space-6);
+    }
+
+    h1 {
+      font-size: var(--kp-text-2xl);
+      font-weight: var(--kp-weight-semi);
+      letter-spacing: var(--kp-tracking-tight);
+      color: var(--kp-fg);
+      margin: 0 0 var(--kp-space-2);
+    }
+
+    .subtitle {
+      font-size: var(--kp-text-sm);
+      color: var(--kp-fg-3);
+      margin: 0 0 var(--kp-space-8);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: var(--kp-space-4);
+    }
+
+    .card {
+      display: block;
+      padding: var(--kp-space-5);
+      border: 1px solid var(--kp-border);
+      border-radius: var(--kp-radius-md);
+      text-decoration: none;
+      color: inherit;
+      transition:
+        border-color var(--kp-dur-base) var(--kp-ease),
+        background var(--kp-dur-base) var(--kp-ease);
+    }
+    .card:hover {
+      border-color: var(--kp-border-strong);
+      background: var(--kp-hover-bg);
+    }
+
+    .card-name {
+      font-family: var(--kp-font-mono);
+      font-size: var(--kp-text-sm);
+      font-weight: var(--kp-weight-medium);
+      letter-spacing: var(--kp-tracking-mono);
+      color: var(--kp-fg);
+      margin: 0 0 var(--kp-space-2);
+    }
+
+    .card-desc {
+      font-size: var(--kp-text-sm);
+      color: var(--kp-fg-3);
+      line-height: var(--kp-leading-normal);
+      margin: 0;
+    }
+
+    footer {
+      padding: var(--kp-space-6);
+      border-top: 1px solid var(--kp-border);
+      text-align: center;
+      font-family: var(--kp-font-mono);
+      font-size: var(--kp-text-xs);
+      color: var(--kp-fg-4);
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <a href="https://kevinprk.com" class="pi-mark" aria-label="kevinprk.com">π</a>
+    <span class="site-title">play.kevinprk.com</span>
+  </header>
+
+  <main>
+    <h1>play</h1>
+    <p class="subtitle">Small interactive experiments.</p>
+
+    <div class="grid">
+      <a href="/fire/" class="card">
+        <p class="card-name">campfire</p>
+        <p class="card-desc">A cozy campfire in the dark.</p>
+      </a>
+    </div>
+  </main>
+
+  <footer>π</footer>
+</body>
+</html>
