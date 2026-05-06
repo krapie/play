@@ -1,0 +1,734 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AWS Latency — play</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="/colors_and_type.css" />
+  <meta name="description" content="Round-trip time from your browser to every AWS region." />
+  <meta name="theme-color" content="#ffffff" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="AWS Latency" />
+  <meta property="og:title" content="AWS Latency — play" />
+  <meta property="og:description" content="Round-trip time from your browser to every AWS region." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://play.kevinprk.com/latency/" />
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="AWS Latency — play" />
+  <meta name="twitter:description" content="Round-trip time from your browser to every AWS region." />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      background: var(--kp-bg);
+      color: var(--kp-fg);
+      font-family: var(--kp-font-sans);
+      -webkit-font-smoothing: antialiased;
+      font-size: var(--kp-text-base);
+      line-height: var(--kp-leading-normal);
+      min-height: 100vh;
+    }
+
+    a { color: inherit; text-decoration: none; }
+    button { font: inherit; cursor: pointer; background: none; border: none; color: inherit; }
+
+    .page { min-height: 100vh; display: flex; flex-direction: column; }
+
+    /* ── Header ─────────────────────────────────────────────────── */
+    .theme-toggle {
+      width: 32px; height: 32px;
+      border-radius: var(--kp-radius-sm);
+      display: grid; place-items: center;
+      color: var(--kp-fg-2);
+      transition: background var(--kp-dur-fast) var(--kp-ease), color var(--kp-dur-fast) var(--kp-ease);
+      flex-shrink: 0;
+    }
+    .theme-toggle:hover { background: var(--kp-hover-bg); color: var(--kp-fg); }
+    .theme-toggle svg { width: 16px; height: 16px; }
+
+    .kp-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: var(--kp-space-5) var(--kp-page-pad);
+      max-width: var(--kp-content-width);
+      width: 100%; margin: 0 auto;
+    }
+    .brand {
+      display: flex; align-items: center; gap: 10px;
+      font-size: var(--kp-text-md);
+      font-weight: var(--kp-weight-semi);
+      letter-spacing: var(--kp-tracking-snug);
+    }
+    .pi-mark {
+      width: 24px; height: 24px;
+      border-radius: var(--kp-radius-sm);
+      background: var(--kp-fg); color: var(--kp-bg);
+      display: grid; place-items: center;
+      font-size: 14px; font-weight: 500;
+      flex-shrink: 0; text-decoration: none;
+    }
+    .kp-header nav {
+      display: flex; align-items: center; gap: var(--kp-space-5);
+      font-size: var(--kp-text-sm); color: var(--kp-fg-2);
+    }
+    .kp-header nav a { transition: color var(--kp-dur-fast) var(--kp-ease); }
+    .kp-header nav a:hover { color: var(--kp-fg); }
+
+    /* ── Main ───────────────────────────────────────────────────── */
+    .kp-main {
+      max-width: var(--kp-content-width);
+      margin: 0 auto; width: 100%;
+      padding: var(--kp-space-7) var(--kp-page-pad) var(--kp-space-9);
+      flex: 1;
+    }
+
+    .intro { margin-bottom: var(--kp-space-6); }
+    .intro h1 {
+      font-size: var(--kp-text-3xl);
+      font-weight: var(--kp-weight-semi);
+      letter-spacing: var(--kp-tracking-tight);
+      line-height: var(--kp-leading-tight);
+      margin-bottom: var(--kp-space-2);
+    }
+    .intro p { font-size: var(--kp-text-sm); color: var(--kp-fg-2); }
+
+    /* ── Map ────────────────────────────────────────────────────── */
+    .map-wrap {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 2 / 1;
+      border: 1px solid var(--kp-border);
+      border-radius: var(--kp-radius);
+      overflow: hidden;
+      margin-bottom: var(--kp-space-5);
+      background: var(--kp-bg);
+    }
+
+    #mapCanvas {
+      position: absolute; inset: 0;
+      width: 100%; height: 100%;
+    }
+
+    #mapSvg {
+      position: absolute; inset: 0;
+      width: 100%; height: 100%;
+      overflow: visible;
+    }
+
+    .map-badge {
+      position: absolute;
+      bottom: var(--kp-space-3); left: var(--kp-space-4);
+      font-family: var(--kp-font-mono);
+      font-size: 10px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--kp-fg-3);
+      display: flex; align-items: center; gap: 6px;
+      user-select: none;
+    }
+    .map-badge .pulse {
+      width: 5px; height: 5px; border-radius: 50%;
+      background: var(--kp-fg-3);
+      flex-shrink: 0;
+    }
+    .map-badge.running .pulse {
+      background: #4ade80;
+      animation: blink 1s ease-in-out infinite;
+    }
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.3; }
+    }
+
+    /* ── Arc lines ──────────────────────────────────────────────── */
+    .arc-line {
+      fill: none;
+      stroke-width: 0.8;
+      stroke-linecap: round;
+      opacity: 0.7;
+    }
+
+    /* ── Region dots ────────────────────────────────────────────── */
+    .region-dot {
+      fill: var(--kp-fg-3);
+      stroke: var(--kp-bg);
+      stroke-width: 1.5;
+      cursor: pointer;
+      transition: r 0.15s ease;
+    }
+    .region-dot:hover { r: 5; }
+
+    /* ── User dot ───────────────────────────────────────────────── */
+    .user-dot-ring {
+      fill: none;
+      stroke: var(--kp-fg);
+      stroke-width: 1;
+      opacity: 0.3;
+    }
+    .user-dot-core {
+      fill: var(--kp-fg);
+      stroke: var(--kp-bg);
+      stroke-width: 1.5;
+    }
+
+    /* ── Table ──────────────────────────────────────────────────── */
+    .table-header {
+      display: grid;
+      grid-template-columns: 200px 1fr 56px;
+      gap: var(--kp-space-3);
+      padding: var(--kp-space-2) var(--kp-space-3);
+      font-family: var(--kp-font-mono);
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--kp-fg-3);
+      border-bottom: 1px solid var(--kp-border);
+      margin-bottom: 2px;
+    }
+    .table-header span:last-child { text-align: right; }
+
+    .region-row {
+      display: grid;
+      grid-template-columns: 200px 1fr 56px;
+      gap: var(--kp-space-3);
+      align-items: center;
+      padding: 7px var(--kp-space-3);
+      border-bottom: 1px solid var(--kp-border-faint);
+      cursor: default;
+      transition: background var(--kp-dur-fast) var(--kp-ease);
+    }
+    .region-row:hover { background: var(--kp-hover-bg); }
+
+    .region-info { display: flex; flex-direction: column; gap: 1px; }
+    .region-name-text {
+      font-size: var(--kp-text-sm);
+      font-weight: var(--kp-weight-medium);
+      line-height: 1.2;
+    }
+    .region-id-text {
+      font-family: var(--kp-font-mono);
+      font-size: 10px;
+      color: var(--kp-fg-3);
+      letter-spacing: 0.02em;
+    }
+
+    .bar-wrap {
+      height: 3px;
+      background: var(--kp-gray-100);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    [data-theme="dark"] .bar-wrap { background: var(--kp-gray-800); }
+
+    .bar-fill {
+      height: 100%;
+      border-radius: 2px;
+      width: 0%;
+      transition: width 0.5s var(--kp-ease);
+    }
+
+    .ms-val {
+      font-family: var(--kp-font-mono);
+      font-size: var(--kp-text-sm);
+      text-align: right;
+      color: var(--kp-fg-3);
+      letter-spacing: -0.02em;
+      transition: color 0.3s ease;
+    }
+
+    /* ── Latency signal colors ──────────────────────────────────── */
+    .c-s  { color: #4ade80; }
+    .c-g  { color: #a3e635; }
+    .c-ok { color: #facc15; }
+    .c-w  { color: #fb923c; }
+    .c-b  { color: #f87171; }
+
+    .b-s  { background: #4ade80; }
+    .b-g  { background: #a3e635; }
+    .b-ok { background: #facc15; }
+    .b-w  { background: #fb923c; }
+    .b-b  { background: #f87171; }
+
+    /* ── Controls ───────────────────────────────────────────────── */
+    .controls {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: var(--kp-space-5);
+      flex-wrap: wrap;
+      gap: var(--kp-space-3);
+    }
+
+    .legend {
+      display: flex;
+      gap: var(--kp-space-4);
+      font-family: var(--kp-font-mono);
+      font-size: 10px;
+      color: var(--kp-fg-3);
+      letter-spacing: 0.02em;
+    }
+    .legend-item { display: flex; align-items: center; gap: 5px; }
+    .legend-pip {
+      width: 6px; height: 6px;
+      border-radius: 50%; flex-shrink: 0;
+    }
+
+    .retest-btn {
+      font-family: var(--kp-font-mono);
+      font-size: 10px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 7px 16px;
+      border: 1px solid var(--kp-border);
+      border-radius: var(--kp-radius-sm);
+      color: var(--kp-fg-2);
+      transition: background var(--kp-dur-fast) var(--kp-ease),
+                  color var(--kp-dur-fast) var(--kp-ease),
+                  border-color var(--kp-dur-fast) var(--kp-ease);
+    }
+    .retest-btn:hover:not(:disabled) {
+      background: var(--kp-hover-bg); color: var(--kp-fg);
+      border-color: var(--kp-fg-3);
+    }
+    .retest-btn:active:not(:disabled) { background: var(--kp-press-bg); }
+    .retest-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+    /* ── Tooltip ────────────────────────────────────────────────── */
+    .tip {
+      position: fixed;
+      background: var(--kp-fg); color: var(--kp-bg);
+      font-family: var(--kp-font-mono);
+      font-size: 11px;
+      padding: 4px 9px;
+      border-radius: var(--kp-radius-sm);
+      pointer-events: none;
+      white-space: nowrap;
+      opacity: 0;
+      transition: opacity 0.1s ease;
+      z-index: 200;
+    }
+    .tip.on { opacity: 1; }
+
+    /* ── Footer ─────────────────────────────────────────────────── */
+    .kp-footer {
+      max-width: var(--kp-content-width);
+      margin: 0 auto; width: 100%;
+      padding: var(--kp-space-6) var(--kp-page-pad);
+      display: flex; align-items: center; justify-content: space-between;
+      font-size: var(--kp-text-xs);
+      font-family: var(--kp-font-mono);
+      color: var(--kp-fg-3);
+    }
+    .kp-footer .pi { font-family: var(--kp-font-sans); font-size: 14px; color: var(--kp-fg-2); }
+
+    /* ── Responsive ─────────────────────────────────────────────── */
+    @media (max-width: 600px) {
+      .table-header,
+      .region-row { grid-template-columns: 1fr 60px 50px; }
+      .legend { gap: var(--kp-space-3); flex-wrap: wrap; }
+    }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <header>
+    <div class="kp-header">
+      <div class="brand">
+        <a href="https://kevinprk.com" class="pi-mark" aria-label="kevinprk.com">π</a>
+        latency
+      </div>
+      <nav>
+        <a href="/">play</a>
+        <button class="theme-toggle" id="themeToggle" aria-label="toggle theme">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M21 12.79A9 9 0 1111.21 3a7 7 0 009.79 9.79z"/>
+          </svg>
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <main class="kp-main">
+    <section class="intro">
+      <h1>AWS Latency</h1>
+      <p>Round-trip time from your browser to every AWS region.</p>
+    </section>
+
+    <div class="map-wrap" id="mapWrap">
+      <canvas id="mapCanvas"></canvas>
+      <svg id="mapSvg" aria-hidden="true"></svg>
+      <div class="map-badge" id="mapBadge">
+        <div class="pulse" id="pulse"></div>
+        <span id="badgeText">loading map…</span>
+      </div>
+    </div>
+
+    <div class="table-header">
+      <span>region</span>
+      <span>latency</span>
+      <span style="text-align:right">ms</span>
+    </div>
+    <div id="regionTable"></div>
+
+    <div class="controls">
+      <div class="legend">
+        <div class="legend-item"><div class="legend-pip" style="background:#4ade80"></div>&lt;30ms</div>
+        <div class="legend-item"><div class="legend-pip" style="background:#a3e635"></div>&lt;100ms</div>
+        <div class="legend-item"><div class="legend-pip" style="background:#facc15"></div>&lt;200ms</div>
+        <div class="legend-item"><div class="legend-pip" style="background:#fb923c"></div>&lt;350ms</div>
+        <div class="legend-item"><div class="legend-pip" style="background:#f87171"></div>350ms+</div>
+      </div>
+      <button class="retest-btn" id="retestBtn" disabled>Re-test</button>
+    </div>
+  </main>
+
+  <footer>
+    <div class="kp-footer">
+      <span>© <span id="year"></span> kevin park</span>
+      <span class="pi">π</span>
+    </div>
+  </footer>
+
+</div>
+
+<div class="tip" id="tip"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
+<script>
+// ── Theme ──────────────────────────────────────────────────────────────────
+const html = document.documentElement;
+const themeBtn = document.getElementById('themeToggle');
+const SUN = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="4"/><path stroke-linecap="round" d="M12 3v1.5M12 19.5V21M3 12h1.5M19.5 12H21M5.6 5.6l1.06 1.06M17.34 17.34l1.06 1.06M5.6 18.4l1.06-1.06M17.34 6.66l1.06-1.06"/></svg>`;
+const MOON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M21 12.79A9 9 0 1111.21 3a7 7 0 009.79 9.79z"/></svg>`;
+
+let theme = localStorage.getItem('kp-theme') ||
+  (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+
+function applyTheme(t) {
+  html.setAttribute('data-theme', t);
+  themeBtn.innerHTML = t === 'dark' ? SUN : MOON;
+  localStorage.setItem('kp-theme', t);
+  if (mapReady) drawMap();
+}
+applyTheme(theme);
+themeBtn.addEventListener('click', () => { theme = theme === 'light' ? 'dark' : 'light'; applyTheme(theme); });
+
+// ── Regions ────────────────────────────────────────────────────────────────
+const REGIONS = [
+  { id: 'us-east-1',      name: 'N. Virginia',  lat: 38.9,  lng: -77.5  },
+  { id: 'us-east-2',      name: 'Ohio',          lat: 40.0,  lng: -83.0  },
+  { id: 'us-west-1',      name: 'N. California', lat: 37.8,  lng: -122.4 },
+  { id: 'us-west-2',      name: 'Oregon',        lat: 45.5,  lng: -122.7 },
+  { id: 'ca-central-1',   name: 'Canada',        lat: 45.5,  lng: -73.6  },
+  { id: 'eu-west-1',      name: 'Ireland',       lat: 53.3,  lng: -8.0   },
+  { id: 'eu-west-2',      name: 'London',        lat: 51.5,  lng: -0.1   },
+  { id: 'eu-west-3',      name: 'Paris',         lat: 48.9,  lng: 2.3    },
+  { id: 'eu-central-1',   name: 'Frankfurt',     lat: 50.1,  lng: 8.7    },
+  { id: 'eu-north-1',     name: 'Stockholm',     lat: 59.3,  lng: 18.1   },
+  { id: 'ap-northeast-1', name: 'Tokyo',         lat: 35.7,  lng: 139.7  },
+  { id: 'ap-northeast-2', name: 'Seoul',         lat: 37.6,  lng: 126.9  },
+  { id: 'ap-northeast-3', name: 'Osaka',         lat: 34.7,  lng: 135.5  },
+  { id: 'ap-southeast-1', name: 'Singapore',     lat: 1.3,   lng: 103.8  },
+  { id: 'ap-southeast-2', name: 'Sydney',        lat: -33.9, lng: 151.2  },
+  { id: 'ap-south-1',     name: 'Mumbai',        lat: 19.1,  lng: 72.9   },
+  { id: 'sa-east-1',      name: 'São Paulo',     lat: -23.5, lng: -46.6  },
+  { id: 'me-south-1',     name: 'Bahrain',       lat: 26.2,  lng: 50.6   },
+  { id: 'af-south-1',     name: 'Cape Town',     lat: -33.9, lng: 18.4   },
+];
+
+// ── Canvas / Projection ────────────────────────────────────────────────────
+const canvas = document.getElementById('mapCanvas');
+const mapSvg = document.getElementById('mapSvg');
+const ctx = canvas.getContext('2d');
+let W = 0, H = 0, mapReady = false, worldGeo = null;
+
+function project(lng, lat) {
+  return [(lng + 180) / 360 * W, (90 - lat) / 180 * H];
+}
+
+function resizeCanvas() {
+  const wrap = document.getElementById('mapWrap');
+  const dpr = window.devicePixelRatio || 1;
+  W = wrap.offsetWidth;
+  H = wrap.offsetHeight;
+  canvas.width = W * dpr;
+  canvas.height = H * dpr;
+  canvas.style.width = W + 'px';
+  canvas.style.height = H + 'px';
+  ctx.scale(dpr, dpr);
+  mapSvg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  if (mapReady) {
+    drawMap();
+    rebuildSvgElements();
+    // restore measured arcs
+    for (const r of REGIONS) {
+      if (latencyData[r.id] != null) drawArc(r, latencyData[r.id]);
+    }
+  }
+}
+
+function drawMap() {
+  ctx.clearRect(0, 0, W, H);
+  if (!worldGeo) return;
+  const isDark = html.getAttribute('data-theme') === 'dark';
+  ctx.fillStyle = isDark ? '#252525' : '#d0d0d0';
+  ctx.beginPath();
+  for (const f of worldGeo.features) {
+    const { type, coordinates } = f.geometry;
+    const ring = (pts) => {
+      if (!pts.length) return;
+      const [x0, y0] = project(pts[0][0], pts[0][1]);
+      ctx.moveTo(x0, y0);
+      for (let i = 1; i < pts.length; i++) {
+        const [x, y] = project(pts[i][0], pts[i][1]);
+        ctx.lineTo(x, y);
+      }
+      ctx.closePath();
+    };
+    if (type === 'Polygon') {
+      for (const r of coordinates) ring(r);
+    } else if (type === 'MultiPolygon') {
+      for (const poly of coordinates) for (const r of poly) ring(r);
+    }
+  }
+  ctx.fill();
+}
+
+async function loadMap() {
+  try {
+    const res = await fetch('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json');
+    const topo = await res.json();
+    worldGeo = topojson.feature(topo, topo.objects.countries);
+  } catch(_) { /* show dots without map on failure */ }
+  mapReady = true;
+  resizeCanvas();
+}
+
+// ── SVG helpers ────────────────────────────────────────────────────────────
+function svgEl(tag, attrs) {
+  const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
+  return el;
+}
+
+const dotEls = {}, arcEls = {};
+let userPos = null;
+
+function rebuildSvgElements() {
+  mapSvg.innerHTML = '';
+
+  // Arcs layer (behind dots)
+  for (const r of REGIONS) {
+    const path = svgEl('path', { class: 'arc-line', 'data-id': r.id, d: '' });
+    mapSvg.appendChild(path);
+    arcEls[r.id] = path;
+  }
+
+  // Region dots
+  for (const r of REGIONS) {
+    const [x, y] = project(r.lng, r.lat);
+    const dot = svgEl('circle', { cx: x, cy: y, r: 3, class: 'region-dot', 'data-id': r.id });
+    dot.addEventListener('mouseenter', (e) => showTip(e, r));
+    dot.addEventListener('mouseleave', hideTip);
+    mapSvg.appendChild(dot);
+    dotEls[r.id] = dot;
+  }
+
+  // User location dot (topmost)
+  if (userPos) placeUserDot();
+}
+
+function placeUserDot() {
+  document.getElementById('userDotRing')?.remove();
+  document.getElementById('userDotCore')?.remove();
+  const [ux, uy] = project(userPos.lng, userPos.lat);
+  const ring = svgEl('circle', { id: 'userDotRing', cx: ux, cy: uy, r: 8, class: 'user-dot-ring' });
+  const core = svgEl('circle', { id: 'userDotCore', cx: ux, cy: uy, r: 3.5, class: 'user-dot-core' });
+  mapSvg.appendChild(ring);
+  mapSvg.appendChild(core);
+}
+
+// ── Arc drawing ────────────────────────────────────────────────────────────
+function drawArc(region, ms) {
+  if (!userPos) return;
+  const [ux, uy] = project(userPos.lng, userPos.lat);
+  const [rx, ry] = project(region.lng, region.lat);
+  const mx = (ux + rx) / 2;
+  const my = (uy + ry) / 2 - Math.abs(rx - ux) * 0.22 - 10;
+  const d = `M ${ux},${uy} Q ${mx},${my} ${rx},${ry}`;
+  const color = msColor(ms);
+  const arc = arcEls[region.id];
+  arc.setAttribute('d', d);
+  arc.setAttribute('stroke', color);
+  // Animate draw
+  const len = arc.getTotalLength();
+  arc.style.strokeDasharray = len;
+  arc.style.strokeDashoffset = len;
+  arc.style.transition = 'none';
+  arc.getBoundingClientRect();
+  arc.style.transition = 'stroke-dashoffset 0.7s ease';
+  arc.style.strokeDashoffset = 0;
+  // Update dot color
+  const dot = dotEls[region.id];
+  dot.setAttribute('fill', color);
+  dot.setAttribute('r', 4);
+}
+
+// ── Tooltip ────────────────────────────────────────────────────────────────
+const tip = document.getElementById('tip');
+const latencyData = {};
+
+function showTip(e, r) {
+  const ms = latencyData[r.id];
+  tip.textContent = ms != null ? `${r.id}  ${ms}ms` : r.id;
+  tip.classList.add('on');
+  posTip(e);
+}
+function hideTip() { tip.classList.remove('on'); }
+document.addEventListener('mousemove', (e) => { if (tip.classList.contains('on')) posTip(e); });
+function posTip(e) { tip.style.left = (e.clientX + 14) + 'px'; tip.style.top = (e.clientY - 32) + 'px'; }
+
+// ── Latency classification ─────────────────────────────────────────────────
+function msColor(ms) {
+  if (ms < 30)  return '#4ade80';
+  if (ms < 100) return '#a3e635';
+  if (ms < 200) return '#facc15';
+  if (ms < 350) return '#fb923c';
+  return '#f87171';
+}
+function msCls(ms) {
+  if (ms < 30)  return 's';
+  if (ms < 100) return 'g';
+  if (ms < 200) return 'ok';
+  if (ms < 350) return 'w';
+  return 'b';
+}
+
+// ── Latency measurement ────────────────────────────────────────────────────
+const wait = (ms) => new Promise(r => setTimeout(r, ms));
+
+async function pingRegion(id) {
+  const url = `https://s3.${id}.amazonaws.com/`;
+  const times = [];
+  for (let i = 0; i < 3; i++) {
+    const t0 = performance.now();
+    try { await fetch(url, { mode: 'no-cors', cache: 'no-store' }); } catch(_) {}
+    times.push(performance.now() - t0);
+    if (i < 2) await wait(120);
+  }
+  return Math.round(Math.min(...times));
+}
+
+// ── Table ──────────────────────────────────────────────────────────────────
+function buildTable() {
+  const table = document.getElementById('regionTable');
+  table.innerHTML = '';
+  for (const r of REGIONS) {
+    const row = document.createElement('div');
+    row.className = 'region-row';
+    row.innerHTML = `
+      <div class="region-info">
+        <div class="region-name-text">${r.name}</div>
+        <div class="region-id-text">${r.id}</div>
+      </div>
+      <div class="bar-wrap"><div class="bar-fill" id="bar-${r.id}"></div></div>
+      <div class="ms-val" id="ms-${r.id}">—</div>
+    `;
+    table.appendChild(row);
+  }
+}
+
+function updateRow(r, ms) {
+  const msEl = document.getElementById(`ms-${r.id}`);
+  const barEl = document.getElementById(`bar-${r.id}`);
+  const c = msCls(ms);
+  msEl.textContent = ms + 'ms';
+  msEl.className = `ms-val c-${c}`;
+  barEl.style.width = Math.min(ms / 500 * 100, 100) + '%';
+  barEl.className = `bar-fill b-${c}`;
+}
+
+// ── Geolocation ────────────────────────────────────────────────────────────
+function getLocation() {
+  return new Promise(resolve => {
+    if (!navigator.geolocation) return resolve({ lat: 37.5665, lng: 126.9780 });
+    navigator.geolocation.getCurrentPosition(
+      p => resolve({ lat: p.coords.latitude, lng: p.coords.longitude }),
+      () => resolve({ lat: 37.5665, lng: 126.9780 }),
+      { timeout: 6000 }
+    );
+  });
+}
+
+// ── Test run ───────────────────────────────────────────────────────────────
+const badge = document.getElementById('mapBadge');
+const badgeText = document.getElementById('badgeText');
+const retestBtn = document.getElementById('retestBtn');
+
+async function runTests() {
+  retestBtn.disabled = true;
+  badge.classList.add('running');
+
+  // Reset
+  for (const r of REGIONS) {
+    const msEl = document.getElementById(`ms-${r.id}`);
+    const barEl = document.getElementById(`bar-${r.id}`);
+    if (msEl) { msEl.textContent = '—'; msEl.className = 'ms-val'; }
+    if (barEl) { barEl.style.width = '0'; barEl.className = 'bar-fill'; }
+    if (arcEls[r.id]) { arcEls[r.id].style.strokeDashoffset = arcEls[r.id].getTotalLength?.() || 0; }
+    if (dotEls[r.id]) { dotEls[r.id].setAttribute('fill', 'var(--kp-fg-3)'); dotEls[r.id].setAttribute('r', 3); }
+    delete latencyData[r.id];
+  }
+
+  let done = 0;
+  badgeText.textContent = `0 / ${REGIONS.length}`;
+
+  await Promise.all(REGIONS.map(async (r) => {
+    const ms = await pingRegion(r.id);
+    latencyData[r.id] = ms;
+    updateRow(r, ms);
+    drawArc(r, ms);
+    done++;
+    badgeText.textContent = `${done} / ${REGIONS.length} regions`;
+  }));
+
+  badge.classList.remove('running');
+  badgeText.textContent = `${REGIONS.length} regions measured`;
+  retestBtn.disabled = false;
+}
+
+// ── Init ───────────────────────────────────────────────────────────────────
+async function init() {
+  document.getElementById('year').textContent = new Date().getFullYear();
+  buildTable();
+
+  badgeText.textContent = 'loading map…';
+  await loadMap();
+
+  window.addEventListener('resize', () => {
+    resizeCanvas();
+    if (userPos) placeUserDot();
+    for (const r of REGIONS) {
+      if (latencyData[r.id] != null) drawArc(r, latencyData[r.id]);
+    }
+  });
+
+  badgeText.textContent = 'locating…';
+  userPos = await getLocation();
+  rebuildSvgElements();
+
+  await runTests();
+}
+
+retestBtn.addEventListener('click', async () => {
+  userPos = await getLocation();
+  rebuildSvgElements();
+  runTests();
+});
+
+init();
+</script>
+</body>
+</html>
