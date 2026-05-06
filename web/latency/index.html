@@ -103,7 +103,36 @@
       overflow: hidden;
       margin-bottom: var(--kp-space-5);
       background: var(--kp-bg);
+      transition: border-radius 0.2s ease;
     }
+    .map-wrap:fullscreen,
+    .map-wrap:-webkit-full-screen {
+      aspect-ratio: unset;
+      border-radius: 0;
+      border: none;
+      width: 100vw;
+      height: 100vh;
+    }
+
+    .fullscreen-btn {
+      position: absolute;
+      top: var(--kp-space-3); right: var(--kp-space-3);
+      width: 28px; height: 28px;
+      border-radius: var(--kp-radius-sm);
+      background: var(--kp-bg);
+      border: 1px solid var(--kp-border);
+      display: grid; place-items: center;
+      color: var(--kp-fg-3);
+      cursor: pointer;
+      opacity: 0;
+      transition: opacity var(--kp-dur-fast) var(--kp-ease),
+                  color var(--kp-dur-fast) var(--kp-ease),
+                  background var(--kp-dur-fast) var(--kp-ease);
+      z-index: 10;
+    }
+    .map-wrap:hover .fullscreen-btn { opacity: 1; }
+    .fullscreen-btn:hover { color: var(--kp-fg); background: var(--kp-hover-bg); }
+    .fullscreen-btn svg { width: 14px; height: 14px; }
 
     #mapCanvas {
       position: absolute; inset: 0;
@@ -363,6 +392,11 @@
         <div class="pulse" id="pulse"></div>
         <span id="badgeText">loading map…</span>
       </div>
+      <button class="fullscreen-btn" id="fullscreenBtn" aria-label="Toggle fullscreen">
+        <svg id="fsIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9M20.25 20.25h-4.5m4.5 0v-4.5m0 4.5L15 15"/>
+        </svg>
+      </button>
     </div>
 
     <div class="table-header">
@@ -405,6 +439,7 @@ const MOON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-
 
 let theme = localStorage.getItem('kp-theme') ||
   (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+let mapReady = false;
 
 function applyTheme(t) {
   html.setAttribute('data-theme', t);
@@ -442,7 +477,7 @@ const REGIONS = [
 const canvas = document.getElementById('mapCanvas');
 const mapSvg = document.getElementById('mapSvg');
 const ctx = canvas.getContext('2d');
-let W = 0, H = 0, mapReady = false, worldGeo = null;
+let W = 0, H = 0, worldGeo = null;
 
 function project(lng, lat) {
   return [(lng + 180) / 360 * W, (90 - lat) / 180 * H];
@@ -727,6 +762,38 @@ retestBtn.addEventListener('click', async () => {
   rebuildSvgElements();
   runTests();
 });
+
+// ── Fullscreen ─────────────────────────────────────────────────────────────
+const fsBtn = document.getElementById('fullscreenBtn');
+const fsIcon = document.getElementById('fsIcon');
+const EXPAND_ICON = `<path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9M20.25 20.25h-4.5m4.5 0v-4.5m0 4.5L15 15"/>`;
+const COLLAPSE_ICON = `<path stroke-linecap="round" stroke-linejoin="round" d="M9 9V4.5M9 9H4.5M9 9L3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5m0-4.5l5.25 5.25"/>`;
+
+fsBtn.addEventListener('click', () => {
+  const wrap = document.getElementById('mapWrap');
+  if (!document.fullscreenElement) {
+    wrap.requestFullscreen?.() || wrap.webkitRequestFullscreen?.();
+  } else {
+    document.exitFullscreen?.() || document.webkitExitFullscreen?.();
+  }
+});
+
+document.addEventListener('fullscreenchange', onFsChange);
+document.addEventListener('webkitfullscreenchange', onFsChange);
+
+function onFsChange() {
+  const isFs = !!document.fullscreenElement;
+  fsIcon.innerHTML = isFs ? COLLAPSE_ICON : EXPAND_ICON;
+  fsBtn.setAttribute('aria-label', isFs ? 'Exit fullscreen' : 'Toggle fullscreen');
+  // Resize after fullscreen transition settles
+  setTimeout(() => {
+    resizeCanvas();
+    if (userPos) placeUserDot();
+    for (const r of REGIONS) {
+      if (latencyData[r.id] != null) drawArc(r, latencyData[r.id]);
+    }
+  }, 100);
+}
 
 init();
 </script>
