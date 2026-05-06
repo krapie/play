@@ -464,7 +464,9 @@ const CONCURRENCY   = 5;
 function fetchWithTimeout(url) {
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT);
-  return fetch(url, { mode: 'no-cors', cache: 'no-store', signal: ctrl.signal })
+  // redirect:'manual' stops at the first response (307) instead of following
+  // the redirect to aws.amazon.com/s3/ which inflates timing by ~400ms
+  return fetch(url, { mode: 'no-cors', cache: 'no-store', redirect: 'manual', signal: ctrl.signal })
     .finally(() => clearTimeout(t));
 }
 
