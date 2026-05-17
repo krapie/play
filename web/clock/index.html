@@ -1,0 +1,418 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AWS Region Clock — play</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="/colors_and_type.css" />
+  <meta name="description" content="Current local time across every AWS region." />
+  <meta name="theme-color" content="#ffffff" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="AWS Region Clock" />
+  <meta property="og:title" content="AWS Region Clock — play" />
+  <meta property="og:description" content="Current local time across every AWS region." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://play.kevinprk.com/clock/" />
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="AWS Region Clock — play" />
+  <meta name="twitter:description" content="Current local time across every AWS region." />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      background: var(--kp-bg);
+      color: var(--kp-fg);
+      font-family: var(--kp-font-sans);
+      -webkit-font-smoothing: antialiased;
+      font-size: var(--kp-text-base);
+      line-height: var(--kp-leading-normal);
+      min-height: 100vh;
+    }
+
+    a { color: inherit; text-decoration: none; }
+    button { font: inherit; cursor: pointer; background: none; border: none; color: inherit; }
+
+    .page { min-height: 100vh; display: flex; flex-direction: column; }
+
+    /* ---------- Theme toggle ---------- */
+    .theme-toggle {
+      width: 32px; height: 32px;
+      border-radius: var(--kp-radius-sm);
+      display: grid; place-items: center;
+      color: var(--kp-fg-2);
+      transition: background var(--kp-dur-fast) var(--kp-ease), color var(--kp-dur-fast) var(--kp-ease);
+      flex-shrink: 0;
+    }
+    .theme-toggle:hover { background: var(--kp-hover-bg); color: var(--kp-fg); }
+    .theme-toggle svg { width: 16px; height: 16px; }
+
+    /* ---------- Header ---------- */
+    .kp-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: var(--kp-space-5) var(--kp-page-pad);
+      max-width: var(--kp-content-width);
+      width: 100%;
+      margin: 0 auto;
+    }
+    .brand {
+      display: flex; align-items: center; gap: 10px;
+      font-size: var(--kp-text-md);
+      font-weight: var(--kp-weight-semi);
+      letter-spacing: var(--kp-tracking-snug);
+    }
+    .pi-mark {
+      width: 24px; height: 24px;
+      border-radius: var(--kp-radius-sm);
+      background: var(--kp-fg);
+      color: var(--kp-bg);
+      display: grid; place-items: center;
+      font-size: 14px; font-weight: 500;
+      flex-shrink: 0;
+      text-decoration: none;
+    }
+    .kp-header nav {
+      display: flex; align-items: center; gap: var(--kp-space-5);
+      font-size: var(--kp-text-sm);
+      color: var(--kp-fg-2);
+    }
+    .kp-header nav a { transition: color var(--kp-dur-fast) var(--kp-ease); }
+    .kp-header nav a:hover { color: var(--kp-fg); }
+
+    /* ---------- Main ---------- */
+    .kp-main {
+      max-width: var(--kp-content-width);
+      margin: 0 auto;
+      width: 100%;
+      padding: var(--kp-space-7) var(--kp-page-pad) var(--kp-space-9);
+      flex: 1;
+    }
+
+    .intro { margin-bottom: var(--kp-space-8); }
+    .intro h1 {
+      font-size: var(--kp-text-3xl);
+      font-weight: var(--kp-weight-semi);
+      letter-spacing: var(--kp-tracking-tight);
+      line-height: var(--kp-leading-tight);
+      color: var(--kp-fg);
+      margin-bottom: var(--kp-space-4);
+    }
+    .intro p {
+      font-size: var(--kp-text-md);
+      line-height: var(--kp-leading-relaxed);
+      color: var(--kp-fg-2);
+      max-width: 56ch;
+    }
+
+    /* ---------- Sections ---------- */
+    .region-group { margin-bottom: var(--kp-space-8); }
+
+    .section-label {
+      font-size: var(--kp-text-xs);
+      font-family: var(--kp-font-mono);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--kp-fg-3);
+      margin-bottom: var(--kp-space-3);
+      padding-bottom: var(--kp-space-2);
+      border-bottom: 1px solid var(--kp-border);
+    }
+
+    /* ---------- Region grid ---------- */
+    .region-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 1px;
+      background: var(--kp-border-faint);
+      border: 1px solid var(--kp-border-faint);
+      border-radius: var(--kp-radius);
+      overflow: hidden;
+    }
+
+    /* ---------- Region card ---------- */
+    .region-card {
+      background: var(--kp-bg);
+      padding: var(--kp-space-4) var(--kp-space-4);
+      display: flex;
+      flex-direction: column;
+      gap: var(--kp-space-1);
+      transition: background var(--kp-dur-fast) var(--kp-ease);
+    }
+    .region-card:hover { background: var(--kp-hover-bg); }
+
+    .card-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--kp-space-2);
+    }
+
+    .region-id {
+      font-family: var(--kp-font-mono);
+      font-size: var(--kp-text-xs);
+      color: var(--kp-fg-3);
+      letter-spacing: -0.01em;
+    }
+
+    .biz-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      background: var(--kp-border);
+      transition: background 0.4s ease;
+    }
+    .biz-dot.open { background: #4ade80; box-shadow: 0 0 5px rgba(74,222,128,0.55); }
+    .biz-dot.soon { background: #facc15; box-shadow: 0 0 5px rgba(250,204,21,0.55); }
+
+    .region-city {
+      font-size: var(--kp-text-md);
+      font-weight: var(--kp-weight-medium);
+      color: var(--kp-fg);
+      letter-spacing: -0.01em;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .region-time {
+      font-family: var(--kp-font-mono);
+      font-size: var(--kp-text-xl);
+      font-weight: var(--kp-weight-semi);
+      color: var(--kp-fg);
+      letter-spacing: -0.03em;
+      line-height: 1;
+      margin-top: var(--kp-space-1);
+    }
+
+    .region-day {
+      font-family: var(--kp-font-mono);
+      font-size: var(--kp-text-xs);
+      color: var(--kp-fg-3);
+      letter-spacing: 0.02em;
+    }
+
+    /* ---------- Legend ---------- */
+    .clock-legend {
+      display: flex;
+      gap: var(--kp-space-5);
+      margin-bottom: var(--kp-space-6);
+      font-family: var(--kp-font-mono);
+      font-size: var(--kp-text-xs);
+      color: var(--kp-fg-3);
+    }
+    .legend-item { display: flex; align-items: center; gap: var(--kp-space-2); }
+    .legend-pip {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    /* ---------- Footer ---------- */
+    .kp-footer {
+      max-width: var(--kp-content-width);
+      margin: 0 auto;
+      width: 100%;
+      padding: var(--kp-space-6) var(--kp-page-pad);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: var(--kp-text-xs);
+      font-family: var(--kp-font-mono);
+      color: var(--kp-fg-3);
+      letter-spacing: -0.005em;
+    }
+    .kp-footer .pi { font-family: var(--kp-font-sans); font-size: 14px; color: var(--kp-fg-2); }
+  </style>
+</head>
+<body>
+  <div class="page">
+
+    <header>
+      <div class="kp-header">
+        <div class="brand">
+          <a href="https://kevinprk.com" class="pi-mark" aria-label="kevinprk.com">π</a>
+          AWS Region Clock
+        </div>
+        <nav>
+          <a href="/">play</a>
+          <button class="theme-toggle" id="themeToggle" aria-label="toggle theme" title="toggle theme">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M21 12.79A9 9 0 1111.21 3a7 7 0 009.79 9.79z"/>
+            </svg>
+          </button>
+        </nav>
+      </div>
+    </header>
+
+    <main class="kp-main">
+      <section class="intro">
+        <h1>Region Clock.</h1>
+        <p>Current local time in every AWS region. Green dot means it's business hours (9 am – 6 pm).</p>
+      </section>
+
+      <div class="clock-legend">
+        <div class="legend-item"><div class="legend-pip" style="background:#4ade80;box-shadow:0 0 5px rgba(74,222,128,.55)"></div>business hours</div>
+        <div class="legend-item"><div class="legend-pip" style="background:#facc15;box-shadow:0 0 5px rgba(250,204,21,.55)"></div>within 1 hour</div>
+        <div class="legend-item"><div class="legend-pip" style="background:var(--kp-border)"></div>outside hours</div>
+      </div>
+
+      <div id="groups"></div>
+    </main>
+
+    <footer>
+      <div class="kp-footer">
+        <span>© <span id="year"></span> kevin park</span>
+        <span class="pi">π</span>
+      </div>
+    </footer>
+
+  </div>
+
+  <script>
+    document.getElementById('year').textContent = new Date().getFullYear();
+
+    // ── Theme ──────────────────────────────────────────────────────────────
+    const html = document.documentElement;
+    const btn = document.getElementById('themeToggle');
+    const SUN  = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="4"/><path stroke-linecap="round" d="M12 3v1.5M12 19.5V21M3 12h1.5M19.5 12H21M5.6 5.6l1.06 1.06M17.34 17.34l1.06 1.06M5.6 18.4l1.06-1.06M17.34 6.66l1.06-1.06"/></svg>`;
+    const MOON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M21 12.79A9 9 0 1111.21 3a7 7 0 009.79 9.79z"/></svg>`;
+    let theme = localStorage.getItem('kp-theme') || 'light';
+    function applyTheme(t) {
+      html.setAttribute('data-theme', t);
+      btn.innerHTML = t === 'dark' ? SUN : MOON;
+      localStorage.setItem('kp-theme', t);
+    }
+    applyTheme(theme);
+    btn.addEventListener('click', () => { theme = theme === 'light' ? 'dark' : 'light'; applyTheme(theme); });
+
+    // ── Region data ────────────────────────────────────────────────────────
+    const GROUPS = [
+      {
+        label: 'Americas',
+        regions: [
+          { id: 'us-east-1',    city: 'N. Virginia',  tz: 'America/New_York'    },
+          { id: 'us-east-2',    city: 'Ohio',          tz: 'America/New_York'    },
+          { id: 'us-west-1',    city: 'N. California', tz: 'America/Los_Angeles' },
+          { id: 'us-west-2',    city: 'Oregon',        tz: 'America/Los_Angeles' },
+          { id: 'ca-central-1', city: 'Canada Central',tz: 'America/Toronto'     },
+          { id: 'ca-west-1',    city: 'Calgary',       tz: 'America/Edmonton'    },
+          { id: 'mx-central-1', city: 'Mexico City',   tz: 'America/Mexico_City' },
+          { id: 'sa-east-1',    city: 'São Paulo',     tz: 'America/Sao_Paulo'   },
+        ]
+      },
+      {
+        label: 'Europe',
+        regions: [
+          { id: 'eu-west-1',    city: 'Ireland',    tz: 'Europe/Dublin'    },
+          { id: 'eu-west-2',    city: 'London',     tz: 'Europe/London'    },
+          { id: 'eu-west-3',    city: 'Paris',      tz: 'Europe/Paris'     },
+          { id: 'eu-central-1', city: 'Frankfurt',  tz: 'Europe/Berlin'    },
+          { id: 'eu-central-2', city: 'Zurich',     tz: 'Europe/Zurich'    },
+          { id: 'eu-north-1',   city: 'Stockholm',  tz: 'Europe/Stockholm' },
+          { id: 'eu-south-1',   city: 'Milan',      tz: 'Europe/Rome'      },
+          { id: 'eu-south-2',   city: 'Spain',      tz: 'Europe/Madrid'    },
+        ]
+      },
+      {
+        label: 'Asia Pacific',
+        regions: [
+          { id: 'ap-northeast-1', city: 'Tokyo',     tz: 'Asia/Tokyo'     },
+          { id: 'ap-northeast-2', city: 'Seoul',     tz: 'Asia/Seoul'     },
+          { id: 'ap-northeast-3', city: 'Osaka',     tz: 'Asia/Tokyo'     },
+          { id: 'ap-southeast-1', city: 'Singapore', tz: 'Asia/Singapore' },
+          { id: 'ap-southeast-2', city: 'Sydney',    tz: 'Australia/Sydney'},
+          { id: 'ap-southeast-3', city: 'Jakarta',   tz: 'Asia/Jakarta'   },
+          { id: 'ap-southeast-4', city: 'Melbourne', tz: 'Australia/Melbourne'},
+          { id: 'ap-southeast-5', city: 'Malaysia',  tz: 'Asia/Kuala_Lumpur'},
+          { id: 'ap-southeast-7', city: 'Thailand',  tz: 'Asia/Bangkok'   },
+          { id: 'ap-south-1',     city: 'Mumbai',    tz: 'Asia/Kolkata'   },
+          { id: 'ap-south-2',     city: 'Hyderabad', tz: 'Asia/Kolkata'   },
+          { id: 'ap-east-1',      city: 'Hong Kong', tz: 'Asia/Hong_Kong' },
+        ]
+      },
+      {
+        label: 'Middle East & Africa',
+        regions: [
+          { id: 'me-south-1',   city: 'Bahrain',   tz: 'Asia/Bahrain'       },
+          { id: 'me-central-1', city: 'UAE',        tz: 'Asia/Dubai'         },
+          { id: 'il-central-1', city: 'Tel Aviv',   tz: 'Asia/Jerusalem'     },
+          { id: 'af-south-1',   city: 'Cape Town',  tz: 'Africa/Johannesburg'},
+        ]
+      },
+    ];
+
+    // ── Build DOM ──────────────────────────────────────────────────────────
+    const timeEls = {}; // id → { time, day, dot }
+
+    const container = document.getElementById('groups');
+    for (const group of GROUPS) {
+      const section = document.createElement('div');
+      section.className = 'region-group';
+      section.innerHTML = `<div class="section-label">${group.label}</div>`;
+
+      const grid = document.createElement('div');
+      grid.className = 'region-grid';
+
+      for (const r of group.regions) {
+        const card = document.createElement('div');
+        card.className = 'region-card';
+        card.innerHTML = `
+          <div class="card-top">
+            <span class="region-id">${r.id}</span>
+            <span class="biz-dot" id="dot-${r.id}"></span>
+          </div>
+          <div class="region-city">${r.city}</div>
+          <div class="region-time" id="time-${r.id}">--:--:--</div>
+          <div class="region-day"  id="day-${r.id}">---</div>
+        `;
+        grid.appendChild(card);
+        timeEls[r.id] = {
+          time: document.getElementById(`time-${r.id}`),
+          day:  document.getElementById(`day-${r.id}`),
+          dot:  document.getElementById(`dot-${r.id}`),
+          tz:   r.tz,
+        };
+      }
+
+      section.appendChild(grid);
+      container.appendChild(section);
+    }
+
+    // ── Clock tick ─────────────────────────────────────────────────────────
+    function tick() {
+      const now = new Date();
+      for (const [id, el] of Object.entries(timeEls)) {
+        const timeFmt = new Intl.DateTimeFormat('en-US', {
+          timeZone: el.tz,
+          hour: '2-digit', minute: '2-digit', second: '2-digit',
+          hour12: false,
+        });
+        const dateFmt = new Intl.DateTimeFormat('en-US', {
+          timeZone: el.tz,
+          weekday: 'short', month: 'short', day: 'numeric',
+        });
+        const hourFmt = new Intl.DateTimeFormat('en-US', {
+          timeZone: el.tz, hour: 'numeric', hour12: false,
+        });
+
+        const timeStr = timeFmt.format(now);
+        const dateStr = dateFmt.format(now);
+        const hour    = parseInt(hourFmt.format(now), 10);
+
+        el.dot.className = 'biz-dot';
+        if (hour >= 9 && hour < 18)       el.dot.classList.add('open');
+        else if (hour === 8 || hour === 18) el.dot.classList.add('soon');
+
+        el.time.textContent = timeStr;
+        el.day.textContent  = dateStr;
+      }
+    }
+
+    tick();
+    setInterval(tick, 1000);
+  </script>
+</body>
+</html>
