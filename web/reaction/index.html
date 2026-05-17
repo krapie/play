@@ -1,0 +1,331 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Reaction Time — play</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="/colors_and_type.css" />
+  <meta name="description" content="Test your reaction time." />
+  <meta name="theme-color" content="#ffffff" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Reaction Time" />
+  <meta property="og:title" content="Reaction Time — play" />
+  <meta property="og:description" content="Test your reaction time." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://play.kevinprk.com/reaction/" />
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="Reaction Time — play" />
+  <meta name="twitter:description" content="Test your reaction time." />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body {
+      margin: 0; padding: 0;
+      height: 100%; width: 100%;
+      overflow: hidden;
+      font-family: var(--kp-font-sans);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── Stage ─────────────────────────────────────────────────────── */
+    .stage {
+      position: relative;
+      width: 100vw; height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      user-select: none;
+      touch-action: manipulation;
+      background: var(--kp-bg);
+      color: var(--kp-fg);
+    }
+
+    /* waiting + too-soon: invert — this inversion IS the GO signal */
+    .stage.waiting,
+    .stage.too-soon { background: var(--kp-fg); color: var(--kp-bg); }
+
+    /* go: snap back instantly — no transition */
+    .stage.go { background: var(--kp-bg); color: var(--kp-fg); }
+
+    /* ── Chrome ────────────────────────────────────────────────────── */
+    .back {
+      position: absolute;
+      top: 24px; left: 28px;
+      font-family: var(--kp-font-mono);
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      text-decoration: none;
+      color: inherit;
+      opacity: 0.3;
+      z-index: 5;
+      transition: opacity 0.15s;
+    }
+    .back:hover { opacity: 0.7; }
+
+    .pi {
+      position: absolute;
+      bottom: 22px; right: 28px;
+      font-family: var(--kp-font-sans);
+      font-size: 18px;
+      opacity: 0.25;
+      z-index: 5;
+      user-select: none;
+    }
+
+    /* ── Center content ────────────────────────────────────────────── */
+    .center {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      pointer-events: none;
+    }
+
+    .state-label {
+      font-family: var(--kp-font-mono);
+      font-size: 10px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      opacity: 0.35;
+      height: 16px;
+      display: flex;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .number-wrap {
+      height: clamp(80px, 14vw, 148px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .big-number {
+      font-family: var(--kp-font-mono);
+      font-size: clamp(80px, 14vw, 148px);
+      font-weight: 600;
+      letter-spacing: -0.04em;
+      line-height: 1;
+    }
+
+    .unit {
+      font-family: var(--kp-font-mono);
+      font-size: 11px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      opacity: 0.4;
+      margin-top: 12px;
+      height: 16px;
+    }
+
+    .hint {
+      font-size: 13px;
+      opacity: 0.35;
+      margin-top: 24px;
+      letter-spacing: -0.005em;
+      height: 20px;
+    }
+
+    /* ── Bottom stats ──────────────────────────────────────────────── */
+    .bottom {
+      position: absolute;
+      bottom: 40px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+      pointer-events: none;
+    }
+
+    .stats-row {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+      font-family: var(--kp-font-mono);
+      font-size: 10px;
+      letter-spacing: 0.04em;
+      opacity: 0.35;
+    }
+    .stat { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+    .stat-label { font-size: 8px; text-transform: uppercase; letter-spacing: 0.1em; opacity: 0.7; }
+    .stat-val { font-size: 12px; letter-spacing: -0.02em; font-weight: 500; }
+
+    @media (prefers-reduced-motion: reduce) {
+      * { transition: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="stage idle" id="stage">
+    <a href="/" class="back" id="backLink">← play</a>
+
+    <div class="center">
+      <div class="state-label" id="stateLabel">reaction time</div>
+      <div class="number-wrap">
+        <div class="big-number" id="bigNumber">--</div>
+      </div>
+      <div class="unit" id="unit"></div>
+      <div class="hint" id="hint">click anywhere to begin</div>
+    </div>
+
+    <div class="bottom">
+      <svg id="sparkline" width="76" height="40" viewBox="0 0 76 40" aria-hidden="true"></svg>
+      <div class="stats-row">
+        <div class="stat"><div class="stat-label">last</div><div class="stat-val" id="statLast">--</div></div>
+        <div class="stat"><div class="stat-label">best</div><div class="stat-val" id="statBest">--</div></div>
+        <div class="stat"><div class="stat-label">avg</div><div class="stat-val" id="statAvg">--</div></div>
+      </div>
+    </div>
+
+    <div class="pi">π</div>
+  </div>
+
+  <script>
+    const stage      = document.getElementById('stage');
+    const stateLabel = document.getElementById('stateLabel');
+    const bigNumber  = document.getElementById('bigNumber');
+    const unit       = document.getElementById('unit');
+    const hint       = document.getElementById('hint');
+    const sparkline  = document.getElementById('sparkline');
+    const statLast   = document.getElementById('statLast');
+    const statBest   = document.getElementById('statBest');
+    const statAvg    = document.getElementById('statAvg');
+    const backLink   = document.getElementById('backLink');
+
+    let state       = 'idle';
+    let startTime   = 0;
+    let waitTimeout = null;
+    let history     = JSON.parse(localStorage.getItem('kp-reaction') || '[]');
+
+    // ── State machine ───────────────────────────────────────────────
+    function setState(s) {
+      state = s;
+      stage.className = `stage ${s}`;
+      render();
+    }
+
+    function render() {
+      const last = history.length ? history[history.length - 1] : null;
+
+      switch (state) {
+        case 'idle':
+          stateLabel.textContent = 'reaction time';
+          bigNumber.textContent  = last != null ? last : '--';
+          unit.textContent       = last != null ? 'ms' : '';
+          hint.textContent       = 'click anywhere to begin';
+          break;
+        case 'waiting':
+          stateLabel.textContent = 'wait...';
+          bigNumber.textContent  = '';
+          unit.textContent       = '';
+          hint.textContent       = '';
+          break;
+        case 'go':
+          stateLabel.textContent = 'now';
+          bigNumber.textContent  = '';
+          unit.textContent       = '';
+          hint.textContent       = '';
+          break;
+        case 'result':
+          stateLabel.textContent = 'reaction time';
+          bigNumber.textContent  = last;
+          unit.textContent       = 'ms';
+          hint.textContent       = 'click to go again';
+          break;
+        case 'too-soon':
+          stateLabel.textContent = 'too soon';
+          bigNumber.textContent  = '×';
+          unit.textContent       = '';
+          hint.textContent       = 'click to retry';
+          break;
+      }
+
+      renderSparkline();
+      renderStats();
+    }
+
+    function renderStats() {
+      if (!history.length) {
+        statLast.textContent = '--';
+        statBest.textContent = '--';
+        statAvg.textContent  = '--';
+        return;
+      }
+      const last = history[history.length - 1];
+      const best = Math.min(...history);
+      const avg  = Math.round(history.reduce((a, b) => a + b, 0) / history.length);
+      statLast.textContent = last + 'ms';
+      statBest.textContent = best + 'ms';
+      statAvg.textContent  = avg  + 'ms';
+    }
+
+    function renderSparkline() {
+      const H = 40, barW = 4, gap = 4, SLOW = 600;
+      let html = '';
+      for (let i = 0; i < 10; i++) {
+        const x        = i * (barW + gap);
+        const histIdx  = history.length - 10 + i;
+        if (histIdx >= 0) {
+          const ms = history[histIdx];
+          const h  = Math.max(3, Math.min(ms / SLOW, 1) * H);
+          html += `<rect x="${x}" y="${H - h}" width="${barW}" height="${h}" rx="1" fill="currentColor"/>`;
+        } else {
+          html += `<rect x="${x}" y="${H - 2}" width="${barW}" height="2" rx="1" fill="currentColor" opacity="0.2"/>`;
+        }
+      }
+      sparkline.innerHTML = html;
+    }
+
+    // ── Game logic ──────────────────────────────────────────────────
+    function startWaiting() {
+      setState('waiting');
+      const delay = 1500 + Math.random() * 2500;
+      waitTimeout = setTimeout(() => {
+        startTime = performance.now();
+        setState('go');
+      }, delay);
+    }
+
+    function handleClick(e) {
+      if (e.target === backLink || backLink.contains(e.target)) return;
+
+      switch (state) {
+        case 'idle':
+        case 'result':
+        case 'too-soon':
+          startWaiting();
+          break;
+        case 'waiting':
+          clearTimeout(waitTimeout);
+          setState('too-soon');
+          break;
+        case 'go': {
+          const ms = Math.round(performance.now() - startTime);
+          history.push(ms);
+          if (history.length > 10) history.shift();
+          localStorage.setItem('kp-reaction', JSON.stringify(history));
+          setState('result');
+          break;
+        }
+      }
+    }
+
+    stage.addEventListener('click', handleClick);
+
+    document.addEventListener('keydown', (e) => {
+      if (e.code === 'Space' && !e.repeat) {
+        e.preventDefault();
+        handleClick({ target: stage });
+      }
+    });
+
+    render();
+  </script>
+</body>
+</html>
