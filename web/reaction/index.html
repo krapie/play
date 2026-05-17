@@ -87,11 +87,11 @@
 
     .state-label {
       font-family: var(--kp-font-mono);
-      font-size: 10px;
-      letter-spacing: 0.16em;
+      font-size: 14px;
+      letter-spacing: 0.1em;
       text-transform: uppercase;
-      opacity: 0.35;
-      height: 16px;
+      opacity: 0.4;
+      height: 20px;
       display: flex;
       align-items: center;
       margin-bottom: 16px;
@@ -114,20 +114,20 @@
 
     .unit {
       font-family: var(--kp-font-mono);
-      font-size: 11px;
+      font-size: 13px;
       letter-spacing: 0.14em;
       text-transform: uppercase;
       opacity: 0.4;
       margin-top: 12px;
-      height: 16px;
+      height: 18px;
     }
 
     .hint {
-      font-size: 13px;
-      opacity: 0.35;
+      font-size: 15px;
+      opacity: 0.4;
       margin-top: 24px;
       letter-spacing: -0.005em;
-      height: 20px;
+      height: 22px;
     }
 
     /* ── Bottom stats ──────────────────────────────────────────────── */
@@ -156,6 +156,67 @@
     .stat-label { font-size: 8px; text-transform: uppercase; letter-spacing: 0.1em; opacity: 0.7; }
     .stat-val { font-size: 12px; letter-spacing: -0.02em; font-weight: 500; }
 
+    /* ── Leaderboard ───────────────────────────────────────────────── */
+    .leaderboard {
+      display: none;
+      position: absolute;
+      right: max(40px, 5vw);
+      top: 50%;
+      transform: translateY(-50%);
+      width: 160px;
+      flex-direction: column;
+      gap: 0;
+      pointer-events: none;
+    }
+    .stage.result .leaderboard { display: flex; }
+
+    .lb-title {
+      font-family: var(--kp-font-mono);
+      font-size: 8px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      opacity: 0.3;
+      margin-bottom: 10px;
+    }
+
+    .lb-row {
+      display: grid;
+      grid-template-columns: 16px 1fr auto;
+      gap: 6px;
+      align-items: baseline;
+      padding: 4px 0;
+      border-bottom: 1px solid currentColor;
+      opacity: 0.25;
+      font-family: var(--kp-font-mono);
+      font-size: 11px;
+    }
+    .lb-row:last-child { border-bottom: none; }
+    .lb-row.me { opacity: 0.75; font-weight: 600; }
+
+    .lb-rank { opacity: 0.5; font-size: 10px; }
+    .lb-pid  { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10px; opacity: 0.8; }
+    .lb-val  { white-space: nowrap; }
+
+    .lb-status {
+      font-family: var(--kp-font-mono);
+      font-size: 9px;
+      letter-spacing: 0.06em;
+      opacity: 0.25;
+      margin-top: 8px;
+    }
+
+    /* On narrow screens, move leaderboard below bottom stats */
+    @media (max-width: 640px) {
+      .leaderboard {
+        right: auto;
+        top: auto;
+        bottom: 130px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 200px;
+      }
+    }
+
     @media (prefers-reduced-motion: reduce) {
       * { transition: none !important; }
     }
@@ -183,10 +244,18 @@
       </div>
     </div>
 
+    <div class="leaderboard" id="leaderboard">
+      <div class="lb-title">global top 10</div>
+      <div id="lbRows"></div>
+      <div class="lb-status" id="lbStatus"></div>
+    </div>
+
     <div class="pi">π</div>
   </div>
 
   <script>
+    const API = 'https://play-api.kevinprk.com';
+
     const stage      = document.getElementById('stage');
     const stateLabel = document.getElementById('stateLabel');
     const bigNumber  = document.getElementById('bigNumber');
@@ -196,7 +265,20 @@
     const statLast   = document.getElementById('statLast');
     const statBest   = document.getElementById('statBest');
     const statAvg    = document.getElementById('statAvg');
+    const lbRows     = document.getElementById('lbRows');
+    const lbStatus   = document.getElementById('lbStatus');
     const backLink   = document.getElementById('backLink');
+
+    // ── Anonymous player ID ─────────────────────────────────────────
+    function getOrCreatePID() {
+      let pid = localStorage.getItem('kp-pid');
+      if (!pid) {
+        pid = crypto.randomUUID();
+        localStorage.setItem('kp-pid', pid);
+      }
+      return pid;
+    }
+    const playerID = getOrCreatePID();
 
     let state       = 'idle';
     let startTime   = 0;
@@ -269,8 +351,8 @@
       const H = 40, barW = 4, gap = 4, SLOW = 600;
       let html = '';
       for (let i = 0; i < 10; i++) {
-        const x        = i * (barW + gap);
-        const histIdx  = history.length - 10 + i;
+        const x       = i * (barW + gap);
+        const histIdx = history.length - 10 + i;
         if (histIdx >= 0) {
           const ms = history[histIdx];
           const h  = Math.max(3, Math.min(ms / SLOW, 1) * H);
@@ -280,6 +362,53 @@
         }
       }
       sparkline.innerHTML = html;
+    }
+
+    // ── API ─────────────────────────────────────────────────────────
+    async function submitResult(ms) {
+      try {
+        await fetch(`${API}/api/results`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ game: 'reaction', player_id: playerID, value: ms }),
+        });
+      } catch (_) {}
+    }
+
+    async function loadLeaderboard() {
+      lbStatus.textContent = 'loading...';
+      lbRows.innerHTML = '';
+      try {
+        const res = await fetch(`${API}/api/results/reaction/leaderboard`);
+        const { leaderboard } = await res.json();
+
+        if (!leaderboard.length) {
+          lbStatus.textContent = 'no entries yet';
+          return;
+        }
+
+        lbRows.innerHTML = leaderboard.map(e => {
+          const isMe = e.player_id === playerID;
+          const shortID = e.player_id.slice(0, 8);
+          return `<div class="lb-row${isMe ? ' me' : ''}">
+            <span class="lb-rank">${e.rank}</span>
+            <span class="lb-pid">${isMe ? 'you' : shortID}</span>
+            <span class="lb-val">${e.value}ms</span>
+          </div>`;
+        }).join('');
+
+        // show player's rank if not in top 10
+        const inTop = leaderboard.some(e => e.player_id === playerID);
+        if (!inTop) {
+          const pr = await fetch(`${API}/api/results/reaction/player/${playerID}`);
+          const { rank } = await pr.json();
+          lbStatus.textContent = rank ? `your rank: #${rank}` : '';
+        } else {
+          lbStatus.textContent = '';
+        }
+      } catch (_) {
+        lbStatus.textContent = 'could not load';
+      }
     }
 
     // ── Game logic ──────────────────────────────────────────────────
@@ -311,6 +440,8 @@
           if (history.length > 10) history.shift();
           localStorage.setItem('kp-reaction', JSON.stringify(history));
           setState('result');
+          submitResult(ms);
+          loadLeaderboard();
           break;
         }
       }
