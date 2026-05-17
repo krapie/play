@@ -1,0 +1,489 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Tracer — play</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="/colors_and_type.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <meta name="description" content="Visualise a traceroute on a live map." />
+  <meta name="theme-color" content="#ffffff" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Tracer" />
+  <meta property="og:title" content="Tracer — play" />
+  <meta property="og:description" content="Visualise a traceroute on a live map." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://play.kevinprk.com/tracer/" />
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="Tracer — play" />
+  <meta name="twitter:description" content="Visualise a traceroute on a live map." />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      width: 100%; height: 100%;
+      overflow: hidden;
+      background: var(--kp-bg);
+      color: var(--kp-fg);
+      font-family: var(--kp-font-sans);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a { color: inherit; text-decoration: none; }
+    button { font: inherit; cursor: pointer; background: none; border: none; color: inherit; }
+
+    /* ── Map ───────────────────────────────────────────────────────── */
+    #map {
+      position: fixed; inset: 0;
+      z-index: 0;
+    }
+    /* Override Leaflet's default blue UI with neutral tones */
+    .leaflet-control-zoom a {
+      color: var(--kp-fg) !important;
+      background: var(--kp-bg) !important;
+      border-color: var(--kp-border) !important;
+    }
+    .leaflet-control-zoom a:hover { background: var(--kp-hover-bg) !important; }
+    .leaflet-control-attribution {
+      font-size: 9px !important;
+      opacity: 0.4;
+      background: transparent !important;
+      color: var(--kp-fg) !important;
+    }
+    .leaflet-control-attribution a { color: inherit !important; }
+
+    /* ── Hop markers ───────────────────────────────────────────────── */
+    .hop-marker {
+      width: 22px; height: 22px;
+      border-radius: 50%;
+      background: var(--kp-fg);
+      color: var(--kp-bg);
+      display: flex; align-items: center; justify-content: center;
+      font-family: var(--kp-font-mono);
+      font-size: 9px;
+      font-weight: 700;
+      border: 2px solid var(--kp-bg);
+      box-shadow: 0 1px 4px rgba(0,0,0,0.35);
+      line-height: 1;
+    }
+    .leaflet-tooltip {
+      font-family: var(--kp-font-mono) !important;
+      font-size: 11px !important;
+      background: var(--kp-fg) !important;
+      color: var(--kp-bg) !important;
+      border: none !important;
+      border-radius: var(--kp-radius-sm) !important;
+      box-shadow: none !important;
+      padding: 4px 8px !important;
+      white-space: pre !important;
+    }
+    .leaflet-tooltip-left::before,
+    .leaflet-tooltip-right::before { display: none !important; }
+
+    /* ── Overlay top ───────────────────────────────────────────────── */
+    .overlay-top {
+      position: fixed; top: 0; left: 0; right: 0;
+      z-index: 10;
+      display: flex; align-items: center; gap: var(--kp-space-3);
+      padding: 0 20px;
+      height: 54px;
+      background: color-mix(in srgb, var(--kp-bg) 90%, transparent);
+      border-bottom: 1px solid var(--kp-border-faint);
+    }
+
+    .brand {
+      display: flex; align-items: center; gap: 10px;
+      font-size: var(--kp-text-md);
+      font-weight: var(--kp-weight-semi);
+      letter-spacing: var(--kp-tracking-snug);
+      flex-shrink: 0;
+    }
+    .pi-mark {
+      width: 24px; height: 24px;
+      border-radius: var(--kp-radius-sm);
+      background: var(--kp-fg); color: var(--kp-bg);
+      display: grid; place-items: center;
+      font-size: 14px; font-weight: 500;
+      flex-shrink: 0;
+    }
+
+    .target-input {
+      flex: 1;
+      max-width: 280px;
+      height: 32px;
+      padding: 0 10px;
+      font-family: var(--kp-font-mono);
+      font-size: var(--kp-text-sm);
+      background: var(--kp-bg);
+      color: var(--kp-fg);
+      border: 1px solid var(--kp-border);
+      border-radius: var(--kp-radius-sm);
+      outline: none;
+      transition: border-color var(--kp-dur-fast) var(--kp-ease);
+    }
+    .target-input:focus { border-color: var(--kp-fg-3); }
+    .target-input::placeholder { color: var(--kp-fg-3); }
+
+    .run-btn {
+      height: 32px;
+      padding: 0 14px;
+      font-family: var(--kp-font-mono);
+      font-size: 10px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      border: 1px solid var(--kp-border);
+      border-radius: var(--kp-radius-sm);
+      color: var(--kp-fg-2);
+      flex-shrink: 0;
+      transition: background var(--kp-dur-fast) var(--kp-ease),
+                  color var(--kp-dur-fast) var(--kp-ease),
+                  border-color var(--kp-dur-fast) var(--kp-ease);
+    }
+    .run-btn:hover:not(:disabled) { background: var(--kp-hover-bg); color: var(--kp-fg); border-color: var(--kp-fg-3); }
+    .run-btn:active:not(:disabled) { background: var(--kp-press-bg); }
+    .run-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+    .spacer { flex: 1; }
+
+    .status-badge {
+      font-family: var(--kp-font-mono);
+      font-size: 10px;
+      letter-spacing: 0.06em;
+      color: var(--kp-fg-3);
+      display: flex; align-items: center; gap: 6px;
+      flex-shrink: 0;
+    }
+    .status-dot {
+      width: 5px; height: 5px; border-radius: 50%;
+      background: var(--kp-fg-3);
+      flex-shrink: 0;
+    }
+    .status-dot.running {
+      background: #4ade80;
+      animation: blink 1s ease-in-out infinite;
+    }
+    @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.2; } }
+
+    .nav-link {
+      font-size: var(--kp-text-sm);
+      color: var(--kp-fg-2);
+      flex-shrink: 0;
+      transition: color var(--kp-dur-fast) var(--kp-ease);
+    }
+    .nav-link:hover { color: var(--kp-fg); }
+
+    .theme-toggle {
+      width: 32px; height: 32px;
+      border-radius: var(--kp-radius-sm);
+      display: grid; place-items: center;
+      color: var(--kp-fg-2);
+      flex-shrink: 0;
+      transition: background var(--kp-dur-fast) var(--kp-ease), color var(--kp-dur-fast) var(--kp-ease);
+    }
+    .theme-toggle:hover { background: var(--kp-hover-bg); color: var(--kp-fg); }
+    .theme-toggle svg { width: 16px; height: 16px; }
+
+    /* ── Hop panel ─────────────────────────────────────────────────── */
+    .hop-panel {
+      position: fixed;
+      left: 0; top: 54px; bottom: 0;
+      width: 260px;
+      z-index: 5;
+      background: color-mix(in srgb, var(--kp-bg) 90%, transparent);
+      border-right: 1px solid var(--kp-border-faint);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .hop-panel-header {
+      font-family: var(--kp-font-mono);
+      font-size: 9px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--kp-fg-3);
+      padding: 10px 14px 8px;
+      border-bottom: 1px solid var(--kp-border-faint);
+      display: grid;
+      grid-template-columns: 20px 90px 52px 1fr;
+      gap: 6px;
+    }
+
+    .hop-list {
+      flex: 1;
+      overflow-y: auto;
+      scrollbar-width: thin;
+      scrollbar-color: var(--kp-border) transparent;
+    }
+
+    .hop-row {
+      display: grid;
+      grid-template-columns: 20px 90px 52px 1fr;
+      gap: 6px;
+      align-items: center;
+      padding: 6px 14px;
+      border-bottom: 1px solid var(--kp-border-faint);
+      font-family: var(--kp-font-mono);
+      font-size: 11px;
+      color: var(--kp-fg);
+      transition: background var(--kp-dur-fast) var(--kp-ease);
+    }
+    .hop-row:hover { background: var(--kp-hover-bg); }
+    .hop-row.timeout { color: var(--kp-fg-3); }
+    .hop-row.latest { background: var(--kp-hover-bg); }
+
+    .hop-num { color: var(--kp-fg-3); font-size: 10px; }
+    .hop-ip  { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; letter-spacing: -0.02em; }
+    .hop-rtt { color: var(--kp-fg-2); text-align: right; }
+    .hop-loc { color: var(--kp-fg-3); font-size: 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    .hop-empty {
+      padding: 20px 14px;
+      font-family: var(--kp-font-mono);
+      font-size: 10px;
+      color: var(--kp-fg-3);
+      letter-spacing: 0.04em;
+    }
+
+    /* ── Mobile: hide hop panel, show below ────────────────────────── */
+    @media (max-width: 600px) {
+      .hop-panel { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <div id="map"></div>
+
+  <div class="overlay-top">
+    <div class="brand">
+      <a href="https://kevinprk.com" class="pi-mark" aria-label="kevinprk.com">π</a>
+      Tracer
+    </div>
+
+    <input class="target-input" id="targetInput" type="text"
+      placeholder="8.8.8.8 or google.com"
+      autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
+
+    <button class="run-btn" id="runBtn">Run</button>
+
+    <div class="spacer"></div>
+
+    <div class="status-badge" id="statusBadge">
+      <div class="status-dot" id="statusDot"></div>
+      <span id="statusText">ready</span>
+    </div>
+
+    <a href="/" class="nav-link">play</a>
+
+    <button class="theme-toggle" id="themeToggle" aria-label="toggle theme">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M21 12.79A9 9 0 1111.21 3a7 7 0 009.79 9.79z"/>
+      </svg>
+    </button>
+  </div>
+
+  <div class="hop-panel">
+    <div class="hop-panel-header">
+      <span>#</span><span>ip</span><span style="text-align:right">rtt</span><span>location</span>
+    </div>
+    <div class="hop-list" id="hopList">
+      <div class="hop-empty" id="hopEmpty">enter a target and press run</div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    const API = 'https://play-api.kevinprk.com';
+
+    // ── Theme ──────────────────────────────────────────────────────
+    const html      = document.documentElement;
+    const themeBtn  = document.getElementById('themeToggle');
+    const SUN  = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="4"/><path stroke-linecap="round" d="M12 3v1.5M12 19.5V21M3 12h1.5M19.5 12H21M5.6 5.6l1.06 1.06M17.34 17.34l1.06 1.06M5.6 18.4l1.06-1.06M17.34 6.66l1.06-1.06"/></svg>`;
+    const MOON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M21 12.79A9 9 0 1111.21 3a7 7 0 009.79 9.79z"/></svg>`;
+
+    let theme = localStorage.getItem('kp-theme') ||
+      (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+
+    function applyTheme(t) {
+      html.setAttribute('data-theme', t);
+      themeBtn.innerHTML = t === 'dark' ? SUN : MOON;
+      localStorage.setItem('kp-theme', t);
+      updateTiles();
+    }
+    applyTheme(theme);
+    themeBtn.addEventListener('click', () => { theme = theme === 'light' ? 'dark' : 'light'; applyTheme(theme); });
+
+    // ── Map ────────────────────────────────────────────────────────
+    const map = L.map('map', {
+      center: [20, 10],
+      zoom: 2,
+      zoomControl: true,
+    });
+
+    const TILES = {
+      light: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+      dark:  'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+    };
+    const ATTR = '&copy; <a href="https://carto.com/attributions">CartoDB</a>';
+
+    let tileLayer = L.tileLayer(TILES[theme], { attribution: ATTR, subdomains: 'abcd', maxZoom: 19 }).addTo(map);
+
+    function updateTiles() {
+      map.removeLayer(tileLayer);
+      tileLayer = L.tileLayer(TILES[theme], { attribution: ATTR, subdomains: 'abcd', maxZoom: 19 }).addTo(map);
+      if (polyline) polyline.setStyle({ color: fgColor() });
+    }
+
+    function fgColor() {
+      return getComputedStyle(html).getPropertyValue('--kp-fg').trim() || '#111';
+    }
+
+    // ── Trace state ────────────────────────────────────────────────
+    let evtSource = null;
+    let polyline  = null;
+    let latLngs   = [];
+    let markers   = [];
+
+    function clearTrace() {
+      latLngs = [];
+      markers.forEach(m => map.removeLayer(m));
+      markers = [];
+      if (polyline) { map.removeLayer(polyline); polyline = null; }
+      document.getElementById('hopList').innerHTML = '';
+      document.getElementById('hopEmpty').style.display = 'block';
+      document.getElementById('hopList').appendChild(document.getElementById('hopEmpty'));
+    }
+
+    function addMarker(hop) {
+      const icon = L.divIcon({
+        html: `<div class="hop-marker">${hop.hop}</div>`,
+        className: '',
+        iconSize: [22, 22],
+        iconAnchor: [11, 11],
+      });
+      const m = L.marker([hop.lat, hop.lon], { icon }).addTo(map);
+      const locStr = [hop.city, hop.country].filter(Boolean).join(', ') || '';
+      const rttStr = hop.rtt ? hop.rtt + ' ms' : '';
+      m.bindTooltip(
+        `#${hop.hop}  ${hop.ip}\n${[locStr, rttStr].filter(Boolean).join('  ·  ')}`,
+        { sticky: true }
+      );
+      markers.push(m);
+
+      latLngs.push([hop.lat, hop.lon]);
+      if (polyline) {
+        polyline.setLatLngs(latLngs);
+      } else {
+        polyline = L.polyline(latLngs, { color: fgColor(), weight: 1.5, opacity: 0.55 }).addTo(map);
+      }
+      if (latLngs.length > 1) {
+        map.fitBounds(polyline.getBounds(), { padding: [60, 300] });
+      } else {
+        map.setView([hop.lat, hop.lon], 4);
+      }
+    }
+
+    function addHopRow(hop) {
+      document.getElementById('hopEmpty').style.display = 'none';
+      const list = document.getElementById('hopList');
+
+      // Remove "latest" from previous row
+      list.querySelector('.latest')?.classList.remove('latest');
+
+      const row = document.createElement('div');
+      row.className = `hop-row${hop.timeout ? ' timeout' : ''} latest`;
+      row.id = `hop-row-${hop.hop}`;
+
+      const loc = [hop.city, hop.country].filter(Boolean).join(', ') || '—';
+      const ip  = hop.timeout ? '*' : (hop.ip || '?');
+      const rtt = hop.rtt ? hop.rtt + 'ms' : '—';
+
+      row.innerHTML = `
+        <span class="hop-num">${hop.hop}</span>
+        <span class="hop-ip">${ip}</span>
+        <span class="hop-rtt">${rtt}</span>
+        <span class="hop-loc">${loc}</span>
+      `;
+      list.appendChild(row);
+      list.scrollTop = list.scrollHeight;
+    }
+
+    // ── Status ─────────────────────────────────────────────────────
+    const statusDot  = document.getElementById('statusDot');
+    const statusText = document.getElementById('statusText');
+    const runBtn     = document.getElementById('runBtn');
+
+    function setStatus(s, text) {
+      statusDot.className = 'status-dot' + (s === 'running' ? ' running' : '');
+      statusText.textContent = text;
+      runBtn.disabled = s === 'running';
+      runBtn.textContent = s === 'running' ? 'stop' : 'run';
+    }
+
+    // ── Run / Stop ─────────────────────────────────────────────────
+    const targetInput = document.getElementById('targetInput');
+
+    function stopTrace() {
+      if (evtSource) { evtSource.close(); evtSource = null; }
+      setStatus('idle', 'stopped');
+      runBtn.disabled = false;
+      runBtn.textContent = 'run';
+    }
+
+    function startTrace() {
+      const target = targetInput.value.trim();
+      if (!target) return;
+
+      if (evtSource) { evtSource.close(); evtSource = null; }
+      clearTrace();
+      setStatus('running', `tracing ${target}`);
+
+      // Change run button to stop
+      runBtn.textContent = 'stop';
+      runBtn.disabled = false;
+      runBtn.onclick = stopTrace;
+
+      let hopCount = 0;
+      evtSource = new EventSource(`${API}/api/tracer?target=${encodeURIComponent(target)}`);
+
+      evtSource.onmessage = (e) => {
+        const hop = JSON.parse(e.data);
+        hopCount++;
+        addHopRow(hop);
+        if (hop.lat && hop.lon) addMarker(hop);
+        statusText.textContent = `hop ${hop.hop}…`;
+      };
+
+      evtSource.addEventListener('done', () => {
+        evtSource.close(); evtSource = null;
+        setStatus('idle', `done — ${hopCount} hops`);
+        runBtn.textContent = 'run';
+        runBtn.onclick = startTrace;
+      });
+
+      evtSource.addEventListener('error', (e) => {
+        evtSource.close(); evtSource = null;
+        setStatus('idle', 'error');
+        runBtn.textContent = 'run';
+        runBtn.onclick = startTrace;
+      });
+
+      evtSource.onerror = () => {
+        if (!evtSource) return;
+        evtSource.close(); evtSource = null;
+        setStatus('idle', `done — ${hopCount} hops`);
+        runBtn.textContent = 'run';
+        runBtn.onclick = startTrace;
+      };
+    }
+
+    runBtn.addEventListener('click', startTrace);
+
+    targetInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') startTrace();
+    });
+  </script>
+</body>
+</html>

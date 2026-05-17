@@ -6,7 +6,7 @@ COPY . .
 RUN CGO_ENABLED=0 GOOS=linux go build -o play-api .
 
 FROM alpine:3.19 AS runner
-RUN apk --no-cache add ca-certificates
+RUN apk --no-cache add ca-certificates traceroute
 WORKDIR /app
 COPY --from=builder /app/play-api .
 EXPOSE 8080
