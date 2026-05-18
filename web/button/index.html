@@ -116,14 +116,6 @@
       transform: translateY(3px);
       box-shadow: 0 2px 0 var(--kp-fg-3);
     }
-    .big-btn.pop {
-      animation: btn-pop 0.22s ease;
-    }
-    @keyframes btn-pop {
-      0%   { transform: translateY(3px); box-shadow: 0 2px 0 var(--kp-fg-3); }
-      55%  { transform: translateY(-4px); box-shadow: 0 9px 0 var(--kp-fg-3); }
-      100% { transform: translateY(0); box-shadow: 0 5px 0 var(--kp-fg-3); }
-    }
 
     /* stat row */
     .stats {
@@ -286,23 +278,27 @@
     const overlayNum = document.getElementById('overlayNum');
     const overlaySub = document.getElementById('overlaySub');
 
-    let currentTotal = -1;
-    let pressing = false;
+    let displayedTotal = 0;
+    let localYours = 0;
+    let initialized = false;
 
     function fmt(n) { return n.toLocaleString(); }
 
-    function updateUI(data) {
+    function bumpCounter(n) {
+      totalEl.classList.remove('bump');
+      void totalEl.offsetWidth;
+      totalEl.textContent = fmt(n);
+      totalEl.classList.add('bump');
+      displayedTotal = n;
+    }
+
+    function applyData(data, fromPoll = false) {
       const { total, yours, rate, just_hit, next_milestone } = data;
 
-      if (total !== currentTotal) {
-        totalEl.classList.remove('bump');
-        void totalEl.offsetWidth;
-        totalEl.classList.add('bump');
-        currentTotal = total;
-      }
+      // from poll: never regress counter (in-flight presses may be ahead)
+      if (!fromPoll || total > displayedTotal) bumpCounter(total);
 
-      totalEl.textContent = fmt(total);
-      if (yours !== undefined) yoursEl.textContent = fmt(yours);
+      if (yours !== undefined) { localYours = yours; yoursEl.textContent = fmt(yours); }
       if (rate !== undefined) rateEl.textContent = fmt(rate);
 
       if (next_milestone) {
@@ -327,51 +323,44 @@
       overlay.classList.add('flash');
     }
 
-    async function press() {
-      if (pressing) return;
-      pressing = true;
+    function handleClick() {
+      // Immediately update counter + yours — no waiting for the network
+      if (initialized) {
+        bumpCounter(displayedTotal + 1);
+        localYours++;
+        yoursEl.textContent = fmt(localYours);
+      }
 
-      theBtn.classList.remove('pop');
-
-      try {
-        const res = await fetch(`${API}/api/button/press`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ session_id: sessionId }),
-        });
-        if (res.ok) {
-          const data = await res.json();
-          updateUI(data);
-          void theBtn.offsetWidth;
-          theBtn.classList.add('pop');
-        }
-      } catch (_) {}
-
-      pressing = false;
+      // Fire-and-forget; reconcile with real server total on response
+      fetch(`${API}/api/button/press`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session_id: sessionId }),
+      })
+        .then(r => r.ok ? r.json() : null)
+        .then(data => { if (data) applyData(data); })
+        .catch(() => {});
     }
 
-    theBtn.addEventListener('click', press);
+    theBtn.addEventListener('click', handleClick);
 
     document.addEventListener('keydown', e => {
-      if (e.code === 'Space' && !e.repeat) { e.preventDefault(); press(); }
+      if (e.code === 'Space' && !e.repeat) { e.preventDefault(); handleClick(); }
     });
 
-    // Poll stats every 3s to show other people's presses
     async function pollStats() {
       try {
         const res = await fetch(`${API}/api/button/stats`);
         if (!res.ok) return;
         const data = await res.json();
-        const yours = parseInt(yoursEl.textContent.replace(/,/g, ''), 10) || 0;
-        updateUI({ ...data, yours });
-      } catch (_) {}
+        applyData({ ...data, yours: localYours }, true);
+      } catch {}
     }
 
-    // Initial load
     fetch(`${API}/api/button/stats`)
       .then(r => r.json())
-      .then(data => updateUI({ ...data, yours: 0 }))
-      .catch(() => { totalEl.textContent = '?'; });
+      .then(data => { initialized = true; applyData({ ...data, yours: 0 }); })
+      .catch(() => { totalEl.textContent = '?'; initialized = true; });
 
     setInterval(pollStats, 3000);
   </script>
