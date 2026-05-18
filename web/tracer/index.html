@@ -374,7 +374,7 @@
     // ── Trace state ────────────────────────────────────────────────
     let evtSource     = null;
     let polylineLayer = null;
-    let segments      = [[]]; // array of [lat, lon] arrays; new segment per antimeridian crossing
+    let segments      = [[]]; // single segment; segments[0] holds all normalized [lat, normLon] pairs
     let markers       = [];
     let markersByHop  = new Map();
     let cableGeoLayer = null;
@@ -404,52 +404,39 @@
       }
     }
 
-    // When two consecutive hops cross the antimeridian, split the segment and
-    // interpolate the exact crossing latitude so the line exits one edge and
-    // re-enters the other — visually continuous when the map is panned.
-    function antimeridianSplit(latA, lonA, latB, lonB) {
-      const diff = lonB - lonA;
-      if (diff > 180) {
-        const t = (-180 - lonA) / ((lonB - 360) - lonA);
-        return { crossLat: latA + t * (latB - latA), aEnd: -180, bStart: 180 };
-      }
-      if (diff < -180) {
-        const t = (180 - lonA) / ((lonB + 360) - lonA);
-        return { crossLat: latA + t * (latB - latA), aEnd: 180, bStart: -180 };
-      }
-      return null;
-    }
-
-    // Use normalized lons only for computing the view center — not for rendering.
-    // All rendered coords stay in canonical [-180, 180] to avoid ghost copies in
-    // adjacent Leaflet world copies.
+    // Normalize each hop's lon to be within 180° of the previous hop so the
+    // polyline always takes the short-way-around path (e.g. eastward across
+    // the Pacific rather than westward through Asia/Europe). The same normLon
+    // is used for both the marker and the polyline point so they always
+    // co-locate in the same Leaflet world copy. fitView uses the same
+    // normLons to center the map on the correct world copy.
     function fitView() {
-      const all = segments.flat();
-      if (all.length < 2) return;
-      const lats = all.map(ll => ll[0]);
-      const normLons = [all[0][1]];
-      for (let i = 1; i < all.length; i++) {
-        let lon = all[i][1];
-        const prev = normLons[i - 1];
-        while (lon - prev > 180) lon -= 360;
-        while (prev - lon > 180) lon += 360;
-        normLons.push(lon);
-      }
+      if (segments[0].length < 2) return;
+      const lats = segments[0].map(ll => ll[0]);
+      const lons = segments[0].map(ll => ll[1]); // already normalized
       map.fitBounds(
-        L.latLngBounds([Math.min(...lats), Math.min(...normLons)], [Math.max(...lats), Math.max(...normLons)]),
+        L.latLngBounds([Math.min(...lats), Math.min(...lons)], [Math.max(...lats), Math.max(...lons)]),
         { paddingTopLeft: [260, 60], paddingBottomRight: [40, 60], animate: false }
       );
     }
 
     function addMarker(hop) {
-      const lon = hop.lon;
+      // Normalize lon relative to previous hop so path goes the short way round
+      let normLon = hop.lon;
+      if (segments[0].length > 0) {
+        const prevLon = segments[0][segments[0].length - 1][1];
+        while (normLon - prevLon > 180) normLon -= 360;
+        while (prevLon - normLon > 180) normLon += 360;
+      }
+      hop.normLon = normLon;
+
       const icon = L.divIcon({
         html: `<div class="hop-marker">${hop.hop}</div>`,
         className: '',
         iconSize: [22, 22],
         iconAnchor: [11, 11],
       });
-      const m = L.marker([hop.lat, lon], { icon }).addTo(map);
+      const m = L.marker([hop.lat, normLon], { icon }).addTo(map);
       const locStr = [hop.city, hop.country].filter(Boolean).join(', ') || '';
       const rttStr = hop.rtt ? hop.rtt + ' ms' : '';
       m.bindTooltip(
@@ -460,31 +447,18 @@
       markers.push(m);
       markersByHop.set(hop.hop, { marker: m, hop });
 
-      const lastSeg = segments[segments.length - 1];
-      if (lastSeg.length > 0) {
-        const [prevLat, prevLon] = lastSeg[lastSeg.length - 1];
-        const split = antimeridianSplit(prevLat, prevLon, hop.lat, lon);
-        if (split) {
-          lastSeg.push([split.crossLat, split.aEnd]);
-          segments.push([[split.crossLat, split.bStart], [hop.lat, lon]]);
-        } else {
-          lastSeg.push([hop.lat, lon]);
-        }
-      } else {
-        lastSeg.push([hop.lat, lon]);
-      }
+      segments[0].push([hop.lat, normLon]);
 
       if (polylineLayer) {
-        polylineLayer.setLatLngs(segments);
+        polylineLayer.setLatLngs(segments[0]);
       } else {
-        polylineLayer = L.polyline(segments, { color: fgColor(), weight: 1.5, opacity: 0.55 }).addTo(map);
+        polylineLayer = L.polyline(segments[0], { color: fgColor(), weight: 1.5, opacity: 0.55 }).addTo(map);
       }
 
-      const totalPoints = segments.reduce((n, s) => n + s.length, 0);
-      if (totalPoints > 1) {
+      if (segments[0].length > 1) {
         fitView();
       } else {
-        map.setView([hop.lat, lon], 4);
+        map.setView([hop.lat, normLon], 4);
       }
     }
 
@@ -513,7 +487,7 @@
       if (hasGeo) {
         row.addEventListener('click', () => {
           setActive(hop.hop);
-          map.flyTo([hop.lat, hop.lon], 8, { duration: 1 });
+          map.flyTo([hop.lat, hop.normLon ?? hop.lon], 8, { duration: 1 });
         });
       }
       list.appendChild(row);
