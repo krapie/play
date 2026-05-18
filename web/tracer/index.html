@@ -405,6 +405,27 @@
       }
     }
 
+    // Fit the map to the current normalized path without using getBounds(),
+    // which returns the full world extent when the geodesic crosses ±180°.
+    function fitNormalizedPath() {
+      if (latLngs.length < 2) return;
+      const lats = latLngs.map(ll => ll[0]);
+      const lons = latLngs.map(ll => ll[1]); // normalized, may exceed ±180
+      const minLat = Math.min(...lats), maxLat = Math.max(...lats);
+      const minLon = Math.min(...lons), maxLon = Math.max(...lons);
+      const centerLat = (minLat + maxLat) / 2;
+      // Wrap center lon back into [-180, 180] for map.setView
+      const centerLon = ((( (minLon + maxLon) / 2) % 360) + 540) % 360 - 180;
+      // Compute zoom: how many degrees fit in the available pixels at each zoom level
+      const { x: w, y: h } = map.getSize();
+      const spanLon = (maxLon - minLon) + 60;  // +60 accounts for hop panel
+      const spanLat = (maxLat - minLat) + 20;
+      const zLon = Math.log2(w * 360 / (spanLon * 256));
+      const zLat = Math.log2(h * 180 / (spanLat * 256));
+      const zoom = Math.max(1, Math.min(10, Math.floor(Math.min(zLon, zLat))));
+      map.setView([centerLat, centerLon], zoom);
+    }
+
     function addMarker(hop) {
       const icon = L.divIcon({
         html: `<div class="hop-marker">${hop.hop}</div>`,
@@ -412,7 +433,8 @@
         iconSize: [22, 22],
         iconAnchor: [11, 11],
       });
-      const m = L.marker([hop.lat, hop.lon], { icon }).addTo(map);
+      // Use normalized lon so marker and geodesic line stay in the same world copy
+      const m = L.marker([hop.lat, hop.normLon], { icon }).addTo(map);
       const locStr = [hop.city, hop.country].filter(Boolean).join(', ') || '';
       const rttStr = hop.rtt ? hop.rtt + ' ms' : '';
       m.bindTooltip(
@@ -423,16 +445,16 @@
       markers.push(m);
       markersByHop.set(hop.hop, { marker: m, hop });
 
-      latLngs.push([hop.lat, hop.lon]);
+      latLngs.push([hop.lat, hop.normLon]);
       if (polyline) {
         polyline.setLatLngs(latLngs);
       } else {
         polyline = L.geodesic(latLngs, { color: fgColor(), weight: 1.5, opacity: 0.55 }).addTo(map);
       }
       if (latLngs.length > 1) {
-        map.fitBounds(polyline.getBounds(), { padding: [60, 300] });
+        fitNormalizedPath();
       } else {
-        map.setView([hop.lat, hop.lon], 4);
+        map.setView([hop.lat, hop.normLon], 4);
       }
     }
 
@@ -461,7 +483,7 @@
       if (hasGeo) {
         row.addEventListener('click', () => {
           setActive(hop.hop);
-          map.flyTo([hop.lat, hop.lon], 8, { duration: 1 });
+          map.flyTo([hop.lat, hop.normLon ?? hop.lon], 8, { duration: 1 });
         });
       }
       list.appendChild(row);
@@ -591,6 +613,17 @@
       evtSource.onmessage = (e) => {
         const hop = JSON.parse(e.data);
         hopCount++;
+        if (hop.lat && hop.lon) {
+          // Normalize longitude so consecutive hops stay in the same world copy,
+          // avoiding the antimeridian split that breaks geodesic rendering.
+          let normLon = hop.lon;
+          if (latLngs.length > 0) {
+            const prev = latLngs[latLngs.length - 1][1];
+            while (normLon - prev > 180) normLon -= 360;
+            while (prev - normLon > 180) normLon += 360;
+          }
+          hop.normLon = normLon;
+        }
         addHopRow(hop);
         if (hop.lat && hop.lon) addMarker(hop);
         statusText.textContent = `hop ${hop.hop}…`;
