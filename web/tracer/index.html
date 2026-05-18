@@ -232,6 +232,8 @@
     .hop-row:hover { background: var(--kp-hover-bg); }
     .hop-row.timeout { color: var(--kp-fg-3); }
     .hop-row.latest { background: var(--kp-hover-bg); }
+    .hop-row.geo { cursor: pointer; }
+    .hop-row.active { background: var(--kp-press-bg); }
 
     .hop-num { color: var(--kp-fg-3); font-size: 10px; }
     .hop-ip  { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; letter-spacing: -0.02em; }
@@ -358,6 +360,15 @@
       hopList.appendChild(hopEmpty);
     }
 
+    function setActive(hopNum) {
+      document.querySelectorAll('.hop-row.active').forEach(el => el.classList.remove('active'));
+      const row = document.getElementById(`hop-row-${hopNum}`);
+      if (row) {
+        row.classList.add('active');
+        row.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      }
+    }
+
     function addMarker(hop) {
       const icon = L.divIcon({
         html: `<div class="hop-marker">${hop.hop}</div>`,
@@ -372,6 +383,7 @@
         `#${hop.hop}  ${hop.ip}\n${[locStr, rttStr].filter(Boolean).join('  ·  ')}`,
         { sticky: true }
       );
+      m.on('click', () => setActive(hop.hop));
       markers.push(m);
 
       latLngs.push([hop.lat, hop.lon]);
@@ -395,7 +407,8 @@
       list.querySelector('.latest')?.classList.remove('latest');
 
       const row = document.createElement('div');
-      row.className = `hop-row${hop.timeout ? ' timeout' : ''} latest`;
+      const hasGeo = hop.lat && hop.lon;
+      row.className = `hop-row${hop.timeout ? ' timeout' : ''}${hasGeo ? ' geo' : ''} latest`;
       row.id = `hop-row-${hop.hop}`;
 
       const loc = [hop.city, hop.country].filter(Boolean).join(', ') || '—';
@@ -408,6 +421,12 @@
         <span class="hop-rtt">${rtt}</span>
         <span class="hop-loc">${loc}</span>
       `;
+      if (hasGeo) {
+        row.addEventListener('click', () => {
+          setActive(hop.hop);
+          map.flyTo([hop.lat, hop.lon], 8, { duration: 1 });
+        });
+      }
       list.appendChild(row);
       list.scrollTop = list.scrollHeight;
     }
