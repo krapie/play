@@ -517,7 +517,7 @@
     // ── Cables ─────────────────────────────────────────────────────
     const CABLE_URL = 'https://raw.githubusercontent.com/tbotnz/submarine-cables-geojson/main/cables.json';
     const cableBtn  = document.getElementById('cableBtn');
-    let cableVisible  = false;
+    let cableVisible  = true;
     let cablesLoaded  = false;
     let cablesLoading = false;
 
@@ -572,6 +572,8 @@
         else map.removeLayer(cableGeoLayer);
       }
     });
+
+    loadCables(); // show cables on page load
 
     // ── PeeringDB ──────────────────────────────────────────────────
     const peeringCache = new Map();
