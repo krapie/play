@@ -404,6 +404,22 @@
       }
     }
 
+    // When two consecutive hops cross the antimeridian, split the segment and
+    // interpolate the exact crossing latitude so the line exits one edge and
+    // re-enters the other — visually continuous when the map is panned.
+    function antimeridianSplit(latA, lonA, latB, lonB) {
+      const diff = lonB - lonA;
+      if (diff > 180) {
+        const t = (-180 - lonA) / ((lonB - 360) - lonA);
+        return { crossLat: latA + t * (latB - latA), aEnd: -180, bStart: 180 };
+      }
+      if (diff < -180) {
+        const t = (180 - lonA) / ((lonB + 360) - lonA);
+        return { crossLat: latA + t * (latB - latA), aEnd: 180, bStart: -180 };
+      }
+      return null;
+    }
+
     // Use normalized lons only for computing the view center — not for rendering.
     // All rendered coords stay in canonical [-180, 180] to avoid ghost copies in
     // adjacent Leaflet world copies.
@@ -446,9 +462,11 @@
 
       const lastSeg = segments[segments.length - 1];
       if (lastSeg.length > 0) {
-        const [, prevLon] = lastSeg[lastSeg.length - 1];
-        if (Math.abs(lon - prevLon) > 180) {
-          segments.push([[hop.lat, lon]]);
+        const [prevLat, prevLon] = lastSeg[lastSeg.length - 1];
+        const split = antimeridianSplit(prevLat, prevLon, hop.lat, lon);
+        if (split) {
+          lastSeg.push([split.crossLat, split.aEnd]);
+          segments.push([[split.crossLat, split.bStart], [hop.lat, lon]]);
         } else {
           lastSeg.push([hop.lat, lon]);
         }
