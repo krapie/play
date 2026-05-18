@@ -488,8 +488,8 @@
     }
 
     // ── Cables ─────────────────────────────────────────────────────
-    const CABLE_BASE = 'https://raw.githubusercontent.com/telegeography/www.submarinecablemap.com/master/web/public/api/v3/cable';
-    const cableBtn   = document.getElementById('cableBtn');
+    const CABLE_URL = 'https://raw.githubusercontent.com/tbotnz/submarine-cables-geojson/main/cables.json';
+    const cableBtn  = document.getElementById('cableBtn');
     let cableVisible  = false;
     let cablesLoaded  = false;
     let cablesLoading = false;
@@ -500,28 +500,9 @@
       cableBtn.textContent = 'loading…';
       cableBtn.disabled = true;
       try {
-        const listRes  = await fetch(`${CABLE_BASE}/all.json`);
-        const listData = await listRes.json();
-        const list     = Array.isArray(listData) ? listData : (listData.cables || []);
-
-        const features = [];
-        const BATCH = 20;
-        for (let i = 0; i < list.length; i += BATCH) {
-          const batch   = list.slice(i, i + BATCH);
-          const settled = await Promise.allSettled(
-            batch.map(c => {
-              const id = c.id || c.cable_id;
-              return id ? fetch(`${CABLE_BASE}/${id}.json`).then(r => r.json()) : Promise.reject();
-            })
-          );
-          for (const s of settled) {
-            if (s.status !== 'fulfilled') continue;
-            const geo = s.value.feature || s.value._geojson;
-            if (geo) features.push(geo);
-          }
-        }
-
-        cableGeoLayer = L.geoJSON(features, {
+        const res  = await fetch(CABLE_URL);
+        const data = await res.json();
+        cableGeoLayer = L.geoJSON(data, {
           style: { color: cableColor(), weight: 0.8, opacity: 1 },
           interactive: false,
         }).addTo(map);
