@@ -351,9 +351,11 @@
       markers.forEach(m => map.removeLayer(m));
       markers = [];
       if (polyline) { map.removeLayer(polyline); polyline = null; }
-      document.getElementById('hopList').innerHTML = '';
-      document.getElementById('hopEmpty').style.display = 'block';
-      document.getElementById('hopList').appendChild(document.getElementById('hopEmpty'));
+      const hopList  = document.getElementById('hopList');
+      const hopEmpty = document.getElementById('hopEmpty');
+      hopList.innerHTML = '';
+      hopEmpty.style.display = 'block';
+      hopList.appendChild(hopEmpty);
     }
 
     function addMarker(hop) {
