@@ -240,6 +240,32 @@
     .hop-rtt { color: var(--kp-fg-2); text-align: right; }
     .hop-loc { color: var(--kp-fg-3); font-size: 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
+    .hop-type {
+      display: inline-block;
+      font-size: 7px; letter-spacing: 0.05em;
+      border: 1px solid var(--kp-border);
+      border-radius: 2px;
+      padding: 0 2px; margin-right: 3px;
+      color: var(--kp-fg-2);
+      vertical-align: middle; line-height: 1.5;
+    }
+    .hop-type:empty { display: none; }
+
+    .cable-btn {
+      height: 32px; padding: 0 10px;
+      font-family: var(--kp-font-mono); font-size: 10px;
+      letter-spacing: 0.08em; text-transform: uppercase;
+      border: 1px solid var(--kp-border);
+      border-radius: var(--kp-radius-sm);
+      color: var(--kp-fg-3); flex-shrink: 0;
+      transition: background var(--kp-dur-fast) var(--kp-ease),
+                  color var(--kp-dur-fast) var(--kp-ease),
+                  border-color var(--kp-dur-fast) var(--kp-ease);
+    }
+    .cable-btn:hover:not(:disabled) { background: var(--kp-hover-bg); color: var(--kp-fg); border-color: var(--kp-fg-3); }
+    .cable-btn.active { color: var(--kp-fg); border-color: var(--kp-fg-2); }
+    .cable-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
     .hop-empty {
       padding: 20px 14px;
       font-family: var(--kp-font-mono);
@@ -269,6 +295,7 @@
       autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
 
     <button class="run-btn" id="runBtn">Run</button>
+    <button class="cable-btn" id="cableBtn">cables</button>
 
     <div class="spacer"></div>
 
@@ -323,10 +350,15 @@
 
     let tileLayer = L.tileLayer(TILES[theme], { attribution: ATTR, subdomains: 'abcd', maxZoom: 19 }).addTo(map);
 
+    function cableColor() {
+      return theme === 'dark' ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.1)';
+    }
+
     function updateTiles() {
       map.removeLayer(tileLayer);
       tileLayer = L.tileLayer(TILES[theme], { attribution: ATTR, subdomains: 'abcd', maxZoom: 19 }).addTo(map);
       if (polyline) polyline.setStyle({ color: fgColor() });
+      if (cableGeoLayer) { cableGeoLayer.setStyle({ color: cableColor() }); cableGeoLayer.bringToBack(); }
     }
 
     function fgColor() {
@@ -340,10 +372,12 @@
       updateTiles();
     }
     // ── Trace state ────────────────────────────────────────────────
-    let evtSource = null;
-    let polyline  = null;
-    let latLngs   = [];
-    let markers   = [];
+    let evtSource    = null;
+    let polyline     = null;
+    let latLngs      = [];
+    let markers      = [];
+    let markersByHop = new Map();
+    let cableGeoLayer = null;
 
     applyTheme(theme);
     themeBtn.addEventListener('click', () => { theme = theme === 'light' ? 'dark' : 'light'; applyTheme(theme); });
@@ -352,6 +386,7 @@
       latLngs = [];
       markers.forEach(m => map.removeLayer(m));
       markers = [];
+      markersByHop.clear();
       if (polyline) { map.removeLayer(polyline); polyline = null; }
       const hopList  = document.getElementById('hopList');
       const hopEmpty = document.getElementById('hopEmpty');
@@ -385,6 +420,7 @@
       );
       m.on('click', () => setActive(hop.hop));
       markers.push(m);
+      markersByHop.set(hop.hop, { marker: m, hop });
 
       latLngs.push([hop.lat, hop.lon]);
       if (polyline) {
@@ -419,7 +455,7 @@
         <span class="hop-num">${hop.hop}</span>
         <span class="hop-ip">${ip}</span>
         <span class="hop-rtt">${rtt}</span>
-        <span class="hop-loc">${loc}</span>
+        <span class="hop-loc"><span class="hop-type" id="hop-type-${hop.hop}"></span>${loc}</span>
       `;
       if (hasGeo) {
         row.addEventListener('click', () => {
@@ -429,6 +465,107 @@
       }
       list.appendChild(row);
       list.scrollTop = list.scrollHeight;
+
+      if (hop.as) {
+        lookupPeeringDB(hop.as).then(net => {
+          if (!net) return;
+          const badge = document.getElementById(`hop-type-${hop.hop}`);
+          if (badge) badge.textContent = net.info_type || '';
+          const entry = markersByHop.get(hop.hop);
+          if (entry) {
+            const { marker, hop: h } = entry;
+            const locStr = [h.city, h.country].filter(Boolean).join(', ') || '';
+            const rttStr = h.rtt ? h.rtt + ' ms' : '';
+            const orgStr = [net.name, net.info_type].filter(Boolean).join(' · ');
+            marker.unbindTooltip();
+            marker.bindTooltip(
+              `#${h.hop}  ${h.ip}\n${[locStr, rttStr].filter(Boolean).join('  ·  ')}${orgStr ? '\n' + orgStr : ''}`,
+              { sticky: true }
+            );
+          }
+        });
+      }
+    }
+
+    // ── Cables ─────────────────────────────────────────────────────
+    const CABLE_BASE = 'https://raw.githubusercontent.com/telegeography/www.submarinecablemap.com/master/web/public/api/v3/cable';
+    const cableBtn   = document.getElementById('cableBtn');
+    let cableVisible  = false;
+    let cablesLoaded  = false;
+    let cablesLoading = false;
+
+    async function loadCables() {
+      if (cablesLoading) return;
+      cablesLoading = true;
+      cableBtn.textContent = 'loading…';
+      cableBtn.disabled = true;
+      try {
+        const listRes  = await fetch(`${CABLE_BASE}/all.json`);
+        const listData = await listRes.json();
+        const list     = Array.isArray(listData) ? listData : (listData.cables || []);
+
+        const features = [];
+        const BATCH = 20;
+        for (let i = 0; i < list.length; i += BATCH) {
+          const batch   = list.slice(i, i + BATCH);
+          const settled = await Promise.allSettled(
+            batch.map(c => {
+              const id = c.id || c.cable_id;
+              return id ? fetch(`${CABLE_BASE}/${id}.json`).then(r => r.json()) : Promise.reject();
+            })
+          );
+          for (const s of settled) {
+            if (s.status !== 'fulfilled') continue;
+            const geo = s.value.feature || s.value._geojson;
+            if (geo) features.push(geo);
+          }
+        }
+
+        cableGeoLayer = L.geoJSON(features, {
+          style: { color: cableColor(), weight: 0.8, opacity: 1 },
+          interactive: false,
+        }).addTo(map);
+        cableGeoLayer.bringToBack();
+        cablesLoaded = true;
+      } catch (e) {
+        console.warn('cable load failed:', e);
+        cableVisible = false;
+      } finally {
+        cablesLoading = false;
+        cableBtn.disabled = false;
+        cableBtn.textContent = 'cables';
+        cableBtn.classList.toggle('active', cableVisible);
+      }
+    }
+
+    cableBtn.addEventListener('click', () => {
+      cableVisible = !cableVisible;
+      cableBtn.classList.toggle('active', cableVisible);
+      if (cableVisible && !cablesLoaded) {
+        loadCables();
+      } else if (cableGeoLayer) {
+        if (cableVisible) { cableGeoLayer.addTo(map); cableGeoLayer.bringToBack(); }
+        else map.removeLayer(cableGeoLayer);
+      }
+    });
+
+    // ── PeeringDB ──────────────────────────────────────────────────
+    const peeringCache = new Map();
+
+    async function lookupPeeringDB(asField) {
+      if (!asField) return null;
+      const m = asField.match(/AS(\d+)/i);
+      if (!m) return null;
+      const asn = m[1];
+      if (peeringCache.has(asn)) return peeringCache.get(asn);
+      peeringCache.set(asn, null);
+      try {
+        const res  = await fetch(`https://www.peeringdb.com/api/net?asn=${asn}&depth=0`);
+        const data = await res.json();
+        const net  = data.data?.[0] ?? null;
+        peeringCache.set(asn, net);
+        return net;
+      } catch { return null; }
     }
 
     // ── Status ─────────────────────────────────────────────────────
