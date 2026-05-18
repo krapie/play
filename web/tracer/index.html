@@ -337,14 +337,14 @@
       localStorage.setItem('kp-theme', t);
       updateTiles();
     }
-    applyTheme(theme);
-    themeBtn.addEventListener('click', () => { theme = theme === 'light' ? 'dark' : 'light'; applyTheme(theme); });
-
     // ── Trace state ────────────────────────────────────────────────
     let evtSource = null;
     let polyline  = null;
     let latLngs   = [];
     let markers   = [];
+
+    applyTheme(theme);
+    themeBtn.addEventListener('click', () => { theme = theme === 'light' ? 'dark' : 'light'; applyTheme(theme); });
 
     function clearTrace() {
       latLngs = [];
