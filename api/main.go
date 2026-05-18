@@ -41,6 +41,8 @@ func main() {
 	})
 
 	r.Get("/api/tracer", h.Tracer)
+	r.Get("/api/button/stats", h.ButtonStats)
+	r.Post("/api/button/press", h.ButtonPress)
 
 	log.Println("play-api listening on :8080")
 	log.Fatal(http.ListenAndServe(":8080", r))

@@ -1,0 +1,379 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>The Button — play</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="/colors_and_type.css" />
+  <meta name="description" content="One button. Everyone presses it." />
+  <meta name="theme-color" content="#ffffff" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="The Button" />
+  <meta property="og:title" content="The Button — play" />
+  <meta property="og:description" content="One button. Everyone presses it." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://play.kevinprk.com/button/" />
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="The Button — play" />
+  <meta name="twitter:description" content="One button. Everyone presses it." />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      height: 100%;
+      font-family: var(--kp-font-sans);
+      -webkit-font-smoothing: antialiased;
+      background: var(--kp-bg);
+      color: var(--kp-fg);
+      overflow: hidden;
+    }
+
+    .stage {
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: var(--kp-space-7);
+      user-select: none;
+    }
+
+    /* back link */
+    .back {
+      position: absolute;
+      top: 24px; left: 28px;
+      font-family: var(--kp-font-mono);
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      text-decoration: none;
+      color: var(--kp-fg-3);
+      transition: color 0.15s;
+    }
+    .back:hover { color: var(--kp-fg); }
+
+    /* pi mark */
+    .pi {
+      position: absolute;
+      bottom: 22px; right: 28px;
+      font-family: var(--kp-font-sans);
+      font-size: 18px;
+      color: var(--kp-fg-3);
+    }
+
+    /* counter */
+    .counter {
+      text-align: center;
+      line-height: 1;
+    }
+    .counter-num {
+      font-family: var(--kp-font-mono);
+      font-size: clamp(48px, 10vw, 88px);
+      font-weight: 600;
+      letter-spacing: -0.04em;
+      color: var(--kp-fg);
+      display: block;
+    }
+    .counter-num.bump {
+      animation: num-bump 0.18s ease;
+    }
+    @keyframes num-bump {
+      0%   { transform: scale(1); }
+      45%  { transform: scale(1.07); }
+      100% { transform: scale(1); }
+    }
+    .counter-label {
+      font-family: var(--kp-font-mono);
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--kp-fg-3);
+      margin-top: 10px;
+    }
+
+    /* big button */
+    .big-btn {
+      width: 140px;
+      height: 140px;
+      border-radius: 50%;
+      background: var(--kp-fg);
+      color: var(--kp-bg);
+      border: none;
+      font: inherit;
+      font-size: 15px;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      cursor: pointer;
+      box-shadow: 0 5px 0 var(--kp-fg-3);
+      transition: box-shadow 0.06s ease;
+      touch-action: manipulation;
+    }
+    .big-btn:hover { opacity: 0.9; }
+    .big-btn:active {
+      transform: translateY(3px);
+      box-shadow: 0 2px 0 var(--kp-fg-3);
+    }
+    .big-btn.pop {
+      animation: btn-pop 0.22s ease;
+    }
+    @keyframes btn-pop {
+      0%   { transform: translateY(3px); box-shadow: 0 2px 0 var(--kp-fg-3); }
+      55%  { transform: translateY(-4px); box-shadow: 0 9px 0 var(--kp-fg-3); }
+      100% { transform: translateY(0); box-shadow: 0 5px 0 var(--kp-fg-3); }
+    }
+
+    /* stat row */
+    .stats {
+      display: flex;
+      align-items: center;
+      gap: 32px;
+      font-family: var(--kp-font-mono);
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      color: var(--kp-fg-3);
+    }
+    .stat { display: flex; flex-direction: column; align-items: center; gap: 5px; }
+    .stat-val {
+      font-size: 18px;
+      font-weight: 500;
+      letter-spacing: -0.02em;
+      color: var(--kp-fg-2);
+    }
+
+    /* milestone progress */
+    .milestone {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      width: min(260px, 60vw);
+    }
+    .milestone-label {
+      display: flex;
+      justify-content: space-between;
+      width: 100%;
+      font-family: var(--kp-font-mono);
+      font-size: 10px;
+      letter-spacing: 0.08em;
+      color: var(--kp-fg-3);
+    }
+    .bar-track {
+      width: 100%;
+      height: 2px;
+      background: var(--kp-border);
+      border-radius: 1px;
+      overflow: hidden;
+    }
+    .bar-fill {
+      height: 100%;
+      background: var(--kp-fg-2);
+      border-radius: 1px;
+      transition: width 0.4s ease;
+      width: 0%;
+    }
+
+    /* milestone flash overlay */
+    .overlay {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      pointer-events: none;
+      opacity: 0;
+      z-index: 100;
+    }
+    .overlay.flash {
+      animation: overlay-flash 1.6s ease forwards;
+    }
+    @keyframes overlay-flash {
+      0%   { opacity: 0; background: transparent; }
+      8%   { opacity: 1; background: var(--kp-fg); }
+      35%  { opacity: 1; background: var(--kp-fg); }
+      100% { opacity: 0; background: transparent; }
+    }
+    .overlay-num {
+      font-family: var(--kp-font-mono);
+      font-size: clamp(56px, 12vw, 120px);
+      font-weight: 700;
+      letter-spacing: -0.04em;
+      color: var(--kp-bg);
+      line-height: 1;
+    }
+    .overlay-sub {
+      font-family: var(--kp-font-mono);
+      font-size: 13px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--kp-bg);
+      opacity: 0.5;
+    }
+  </style>
+</head>
+<body>
+  <div class="stage">
+    <a href="/" class="back">← play</a>
+
+    <div class="counter">
+      <span class="counter-num" id="totalNum">—</span>
+      <div class="counter-label">total presses</div>
+    </div>
+
+    <button class="big-btn" id="theBtn">press</button>
+
+    <div class="stats">
+      <div class="stat">
+        <span class="stat-val" id="yoursNum">—</span>
+        <span>yours</span>
+      </div>
+      <div class="stat">
+        <span class="stat-val" id="rateNum">—</span>
+        <span>/ min</span>
+      </div>
+    </div>
+
+    <div class="milestone" id="milestoneWrap">
+      <div class="milestone-label">
+        <span>next milestone</span>
+        <span id="nextMilestoneEl">—</span>
+      </div>
+      <div class="bar-track"><div class="bar-fill" id="barFill"></div></div>
+    </div>
+
+    <div class="pi">π</div>
+  </div>
+
+  <div class="overlay" id="overlay">
+    <div class="overlay-num" id="overlayNum"></div>
+    <div class="overlay-sub" id="overlaySub"></div>
+  </div>
+
+  <script>
+    const API = 'https://play-api.kevinprk.com';
+
+    const MILESTONES = [100, 500, 1000, 5000, 10000, 50000, 100000, 500000, 1000000];
+    const MILESTONE_LABELS = {
+      100: 'triple digits',
+      500: 'five hundred',
+      1000: 'one thousand',
+      5000: 'five thousand',
+      10000: 'ten thousand',
+      50000: 'fifty thousand',
+      100000: 'one hundred thousand',
+      500000: 'half a million',
+      1000000: 'one million',
+    };
+
+    let sessionId = localStorage.getItem('kp-btn-session');
+    if (!sessionId) {
+      sessionId = 'b_' + Array.from(crypto.getRandomValues(new Uint8Array(12)))
+        .map(b => b.toString(16).padStart(2, '0')).join('');
+      localStorage.setItem('kp-btn-session', sessionId);
+    }
+
+    const totalEl   = document.getElementById('totalNum');
+    const yoursEl   = document.getElementById('yoursNum');
+    const rateEl    = document.getElementById('rateNum');
+    const nextEl    = document.getElementById('nextMilestoneEl');
+    const fillEl    = document.getElementById('barFill');
+    const theBtn    = document.getElementById('theBtn');
+    const overlay   = document.getElementById('overlay');
+    const overlayNum = document.getElementById('overlayNum');
+    const overlaySub = document.getElementById('overlaySub');
+
+    let currentTotal = -1;
+    let pressing = false;
+
+    function fmt(n) { return n.toLocaleString(); }
+
+    function updateUI(data) {
+      const { total, yours, rate, just_hit, next_milestone } = data;
+
+      if (total !== currentTotal) {
+        totalEl.classList.remove('bump');
+        void totalEl.offsetWidth;
+        totalEl.classList.add('bump');
+        currentTotal = total;
+      }
+
+      totalEl.textContent = fmt(total);
+      if (yours !== undefined) yoursEl.textContent = fmt(yours);
+      if (rate !== undefined) rateEl.textContent = fmt(rate);
+
+      if (next_milestone) {
+        nextEl.textContent = fmt(next_milestone);
+        const idx = MILESTONES.indexOf(next_milestone);
+        const prev = idx > 0 ? MILESTONES[idx - 1] : 0;
+        const pct = Math.min(100, ((total - prev) / (next_milestone - prev)) * 100);
+        fillEl.style.width = pct + '%';
+      } else {
+        nextEl.textContent = '∞';
+        fillEl.style.width = '100%';
+      }
+
+      if (just_hit) showMilestone(just_hit);
+    }
+
+    function showMilestone(n) {
+      overlayNum.textContent = fmt(n);
+      overlaySub.textContent = MILESTONE_LABELS[n] || 'milestone';
+      overlay.classList.remove('flash');
+      void overlay.offsetWidth;
+      overlay.classList.add('flash');
+    }
+
+    async function press() {
+      if (pressing) return;
+      pressing = true;
+
+      theBtn.classList.remove('pop');
+
+      try {
+        const res = await fetch(`${API}/api/button/press`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ session_id: sessionId }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          updateUI(data);
+          void theBtn.offsetWidth;
+          theBtn.classList.add('pop');
+        }
+      } catch (_) {}
+
+      pressing = false;
+    }
+
+    theBtn.addEventListener('click', press);
+
+    document.addEventListener('keydown', e => {
+      if (e.code === 'Space' && !e.repeat) { e.preventDefault(); press(); }
+    });
+
+    // Poll stats every 3s to show other people's presses
+    async function pollStats() {
+      try {
+        const res = await fetch(`${API}/api/button/stats`);
+        if (!res.ok) return;
+        const data = await res.json();
+        const yours = parseInt(yoursEl.textContent.replace(/,/g, ''), 10) || 0;
+        updateUI({ ...data, yours });
+      } catch (_) {}
+    }
+
+    // Initial load
+    fetch(`${API}/api/button/stats`)
+      .then(r => r.json())
+      .then(data => updateUI({ ...data, yours: 0 }))
+      .catch(() => { totalEl.textContent = '?'; });
+
+    setInterval(pollStats, 3000);
+  </script>
+</body>
+</html>

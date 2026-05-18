@@ -46,6 +46,15 @@ func migrate(conn *sql.DB) error {
 
 		CREATE INDEX IF NOT EXISTS idx_results_game_player
 			ON results(game, player_id);
+
+		CREATE TABLE IF NOT EXISTS button_presses (
+			id         INTEGER PRIMARY KEY AUTOINCREMENT,
+			session_id TEXT    NOT NULL,
+			pressed_at TEXT    DEFAULT (datetime('now'))
+		);
+
+		CREATE INDEX IF NOT EXISTS idx_button_session ON button_presses(session_id);
+		CREATE INDEX IF NOT EXISTS idx_button_time    ON button_presses(pressed_at);
 	`)
 	return err
 }
