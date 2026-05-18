@@ -1,0 +1,560 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Pick — play</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="/colors_and_type.css" />
+  <meta name="description" content="Add options, let randomness decide." />
+  <meta name="theme-color" content="#ffffff" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Pick" />
+  <meta property="og:title" content="Pick — play" />
+  <meta property="og:description" content="Add options, let randomness decide." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://play.kevinprk.com/pick/" />
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="Pick — play" />
+  <meta name="twitter:description" content="Add options, let randomness decide." />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      background: var(--kp-bg);
+      color: var(--kp-fg);
+      font-family: var(--kp-font-sans);
+      -webkit-font-smoothing: antialiased;
+      font-size: var(--kp-text-base);
+      line-height: var(--kp-leading-normal);
+      min-height: 100vh;
+    }
+
+    a { color: inherit; text-decoration: none; }
+    button { font: inherit; cursor: pointer; background: none; border: none; color: inherit; }
+
+    .page { min-height: 100vh; display: flex; flex-direction: column; }
+
+    /* ---------- Theme toggle ---------- */
+    .theme-toggle {
+      width: 32px; height: 32px;
+      border-radius: var(--kp-radius-sm);
+      display: grid; place-items: center;
+      color: var(--kp-fg-2);
+      transition: background var(--kp-dur-fast) var(--kp-ease), color var(--kp-dur-fast) var(--kp-ease);
+      flex-shrink: 0;
+    }
+    .theme-toggle:hover { background: var(--kp-hover-bg); color: var(--kp-fg); }
+    .theme-toggle svg { width: 16px; height: 16px; }
+
+    /* ---------- Header ---------- */
+    .kp-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: var(--kp-space-5) var(--kp-page-pad);
+      max-width: var(--kp-content-width);
+      width: 100%;
+      margin: 0 auto;
+    }
+    .brand {
+      display: flex; align-items: center; gap: 10px;
+      font-size: var(--kp-text-md);
+      font-weight: var(--kp-weight-semi);
+      letter-spacing: var(--kp-tracking-snug);
+    }
+    .pi-mark {
+      width: 24px; height: 24px;
+      border-radius: var(--kp-radius-sm);
+      background: var(--kp-fg);
+      color: var(--kp-bg);
+      display: grid; place-items: center;
+      font-size: 14px; font-weight: 500;
+      flex-shrink: 0;
+    }
+    .kp-header nav {
+      display: flex; align-items: center; gap: var(--kp-space-5);
+      font-size: var(--kp-text-sm);
+      color: var(--kp-fg-2);
+    }
+    .kp-header nav a { transition: color var(--kp-dur-fast) var(--kp-ease); }
+    .kp-header nav a:hover { color: var(--kp-fg); }
+
+    /* ---------- Main ---------- */
+    .kp-main {
+      max-width: var(--kp-content-width);
+      margin: 0 auto;
+      width: 100%;
+      padding: var(--kp-space-7) var(--kp-page-pad) var(--kp-space-9);
+      flex: 1;
+    }
+
+    .intro { margin-bottom: var(--kp-space-7); }
+    .intro h1 {
+      font-size: var(--kp-text-3xl);
+      font-weight: var(--kp-weight-semi);
+      letter-spacing: var(--kp-tracking-tight);
+      line-height: var(--kp-leading-tight);
+      margin-bottom: var(--kp-space-3);
+    }
+    .intro p {
+      font-size: var(--kp-text-md);
+      color: var(--kp-fg-2);
+      line-height: var(--kp-leading-relaxed);
+    }
+
+    /* ---------- Picker ---------- */
+    .picker { max-width: 480px; }
+
+    /* input row */
+    .input-row {
+      display: flex;
+      gap: var(--kp-space-2);
+      margin-bottom: var(--kp-space-3);
+    }
+    .item-input {
+      flex: 1;
+      height: 44px;
+      padding: 0 var(--kp-space-4);
+      background: var(--kp-bg);
+      border: 1px solid var(--kp-border);
+      border-radius: var(--kp-radius-sm);
+      color: var(--kp-fg);
+      font: inherit;
+      font-size: var(--kp-text-md);
+      transition: border-color var(--kp-dur-fast) var(--kp-ease);
+      outline: none;
+    }
+    .item-input::placeholder { color: var(--kp-fg-3); }
+    .item-input:focus { border-color: var(--kp-fg-2); }
+
+    .add-btn {
+      width: 44px; height: 44px;
+      border-radius: var(--kp-radius-sm);
+      background: var(--kp-fg);
+      color: var(--kp-bg);
+      font-size: 22px;
+      font-weight: 300;
+      display: grid; place-items: center;
+      flex-shrink: 0;
+      transition: opacity var(--kp-dur-fast) var(--kp-ease);
+    }
+    .add-btn:hover { opacity: 0.85; }
+    .add-btn:active { opacity: 0.7; }
+
+    /* presets */
+    .presets {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--kp-space-2);
+      margin-bottom: var(--kp-space-5);
+    }
+    .preset-btn {
+      height: 28px;
+      padding: 0 var(--kp-space-3);
+      border: 1px solid var(--kp-border);
+      border-radius: 99px;
+      font-size: var(--kp-text-sm);
+      color: var(--kp-fg-2);
+      transition: border-color var(--kp-dur-fast) var(--kp-ease), color var(--kp-dur-fast) var(--kp-ease), background var(--kp-dur-fast) var(--kp-ease);
+      white-space: nowrap;
+    }
+    .preset-btn:hover { border-color: var(--kp-fg-2); color: var(--kp-fg); background: var(--kp-hover-bg); }
+
+    /* item list */
+    .item-list {
+      list-style: none;
+      border-top: 1px solid var(--kp-border-faint);
+      margin-bottom: var(--kp-space-4);
+    }
+
+    .item-row {
+      display: flex;
+      align-items: center;
+      gap: var(--kp-space-3);
+      padding: var(--kp-space-3) var(--kp-space-2);
+      border-bottom: 1px solid var(--kp-border-faint);
+      border-radius: var(--kp-radius-sm);
+      transition: background var(--kp-dur-fast) var(--kp-ease), color var(--kp-dur-fast) var(--kp-ease);
+    }
+    .item-row.lit {
+      background: var(--kp-fg);
+      color: var(--kp-bg);
+    }
+    .item-row.winner {
+      background: var(--kp-fg);
+      color: var(--kp-bg);
+      animation: winner-pulse 0.3s ease;
+    }
+    @keyframes winner-pulse {
+      0%   { transform: scale(1); }
+      40%  { transform: scale(1.025); }
+      100% { transform: scale(1); }
+    }
+
+    .item-name {
+      flex: 1;
+      font-size: var(--kp-text-md);
+      font-weight: var(--kp-weight-medium);
+      letter-spacing: -0.005em;
+    }
+    .remove-btn {
+      width: 28px; height: 28px;
+      border-radius: var(--kp-radius-sm);
+      display: grid; place-items: center;
+      font-size: 18px;
+      font-weight: 300;
+      color: inherit;
+      opacity: 0.3;
+      transition: opacity var(--kp-dur-fast) var(--kp-ease), background var(--kp-dur-fast) var(--kp-ease);
+      flex-shrink: 0;
+    }
+    .remove-btn:hover { opacity: 0.8; background: color-mix(in srgb, currentColor 10%, transparent); }
+    .item-list.spinning .remove-btn { pointer-events: none; }
+
+    /* empty state */
+    .empty-state {
+      padding: var(--kp-space-7) 0;
+      text-align: center;
+      font-size: var(--kp-text-sm);
+      color: var(--kp-fg-3);
+      font-family: var(--kp-font-mono);
+      letter-spacing: 0.02em;
+    }
+
+    /* pick button */
+    .pick-btn {
+      width: 100%;
+      height: 56px;
+      background: var(--kp-fg);
+      color: var(--kp-bg);
+      border-radius: var(--kp-radius-sm);
+      font-size: var(--kp-text-lg);
+      font-weight: var(--kp-weight-semi);
+      letter-spacing: var(--kp-tracking-snug);
+      transition: opacity var(--kp-dur-fast) var(--kp-ease);
+      margin-bottom: var(--kp-space-6);
+    }
+    .pick-btn:hover:not(:disabled) { opacity: 0.88; }
+    .pick-btn:active:not(:disabled) { opacity: 0.75; }
+    .pick-btn:disabled { opacity: 0.2; cursor: not-allowed; }
+
+    /* result */
+    .result-area {
+      text-align: center;
+      padding: var(--kp-space-5) 0 var(--kp-space-3);
+      animation: result-in 0.25s ease;
+    }
+    @keyframes result-in {
+      from { opacity: 0; transform: translateY(6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .result-label {
+      font-family: var(--kp-font-mono);
+      font-size: var(--kp-text-xs);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--kp-fg-3);
+      margin-bottom: var(--kp-space-2);
+    }
+    .result-text {
+      font-size: clamp(28px, 6vw, 48px);
+      font-weight: var(--kp-weight-semi);
+      letter-spacing: var(--kp-tracking-tight);
+      color: var(--kp-fg);
+      word-break: break-word;
+    }
+
+    /* share */
+    .share-row {
+      display: flex;
+      justify-content: center;
+      margin-top: var(--kp-space-5);
+    }
+    .share-btn {
+      height: 32px;
+      padding: 0 var(--kp-space-4);
+      border: 1px solid var(--kp-border);
+      border-radius: 99px;
+      font-size: var(--kp-text-sm);
+      color: var(--kp-fg-2);
+      transition: border-color var(--kp-dur-fast) var(--kp-ease), color var(--kp-dur-fast) var(--kp-ease);
+      display: flex; align-items: center; gap: 6px;
+    }
+    .share-btn:hover { border-color: var(--kp-fg-2); color: var(--kp-fg); }
+    .share-btn svg { width: 14px; height: 14px; flex-shrink: 0; }
+
+    /* ---------- Footer ---------- */
+    .kp-footer {
+      max-width: var(--kp-content-width);
+      margin: 0 auto;
+      width: 100%;
+      padding: var(--kp-space-6) var(--kp-page-pad);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: var(--kp-text-xs);
+      font-family: var(--kp-font-mono);
+      color: var(--kp-fg-3);
+    }
+    .kp-footer .pi { font-family: var(--kp-font-sans); font-size: 14px; color: var(--kp-fg-2); }
+  </style>
+</head>
+<body>
+  <div class="page">
+
+    <header>
+      <div class="kp-header">
+        <div class="brand">
+          <a href="https://kevinprk.com" class="pi-mark" aria-label="kevinprk.com">π</a>
+          play
+        </div>
+        <nav>
+          <a href="/">experiments</a>
+          <button class="theme-toggle" id="themeToggle" aria-label="toggle theme">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M21 12.79A9 9 0 1111.21 3a7 7 0 009.79 9.79z"/>
+            </svg>
+          </button>
+        </nav>
+      </div>
+    </header>
+
+    <main class="kp-main">
+      <section class="intro">
+        <h1>Pick one.</h1>
+        <p>Add your options. Let randomness decide.</p>
+      </section>
+
+      <div class="picker">
+        <div class="input-row">
+          <input
+            type="text"
+            id="itemInput"
+            class="item-input"
+            placeholder="add an option…"
+            autocomplete="off"
+            maxlength="80"
+          />
+          <button class="add-btn" id="addBtn" aria-label="add">+</button>
+        </div>
+
+        <div class="presets" id="presets">
+          <button class="preset-btn" data-items="한식,중식,양식">한식 · 중식 · 양식</button>
+          <button class="preset-btn" data-items="가위,바위,보">가위 · 바위 · 보</button>
+          <button class="preset-btn" data-items="yes,no">yes · no</button>
+          <button class="preset-btn" data-items="coffee,tea">coffee · tea</button>
+        </div>
+
+        <ul class="item-list" id="itemList"></ul>
+
+        <button class="pick-btn" id="pickBtn" disabled>pick</button>
+
+        <div class="result-area" id="resultArea" style="display:none">
+          <div class="result-label">selected</div>
+          <div class="result-text" id="resultText"></div>
+        </div>
+
+        <div class="share-row" id="shareRow" style="display:none">
+          <button class="share-btn" id="shareBtn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" />
+            </svg>
+            copy link
+          </button>
+        </div>
+      </div>
+    </main>
+
+    <footer>
+      <div class="kp-footer">
+        <span>© <span id="year"></span> kevin park</span>
+        <span class="pi">π</span>
+      </div>
+    </footer>
+
+  </div>
+
+  <script>
+    document.getElementById('year').textContent = new Date().getFullYear();
+
+    // ---------- Theme ----------
+    const html = document.documentElement;
+    const themeBtn = document.getElementById('themeToggle');
+    const sunIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="4"/><path stroke-linecap="round" d="M12 3v1.5M12 19.5V21M3 12h1.5M19.5 12H21M5.6 5.6l1.06 1.06M17.34 17.34l1.06 1.06M5.6 18.4l1.06-1.06M17.34 6.66l1.06-1.06"/></svg>`;
+    const moonIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M21 12.79A9 9 0 1111.21 3a7 7 0 009.79 9.79z"/></svg>`;
+    let theme = localStorage.getItem('kp-theme') || 'light';
+    function applyTheme(t) {
+      html.setAttribute('data-theme', t);
+      themeBtn.innerHTML = t === 'dark' ? sunIcon : moonIcon;
+      localStorage.setItem('kp-theme', t);
+    }
+    applyTheme(theme);
+    themeBtn.addEventListener('click', () => { theme = theme === 'light' ? 'dark' : 'light'; applyTheme(theme); });
+
+    // ---------- State ----------
+    let items = [];
+    let spinning = false;
+
+    function esc(s) {
+      return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    // ---------- Persistence + URL ----------
+    function loadItems() {
+      const params = new URLSearchParams(location.search);
+      const urlParam = params.get('items');
+      if (urlParam) {
+        items = urlParam.split(',').map(s => decodeURIComponent(s).trim()).filter(Boolean);
+        return;
+      }
+      try {
+        const saved = localStorage.getItem('kp-pick-items');
+        if (saved) items = JSON.parse(saved);
+      } catch (_) {}
+    }
+
+    function saveItems() {
+      localStorage.setItem('kp-pick-items', JSON.stringify(items));
+    }
+
+    // ---------- Render ----------
+    function render() {
+      const list = document.getElementById('itemList');
+      if (!items.length) {
+        list.innerHTML = '<li class="empty-state">no options yet</li>';
+      } else {
+        list.innerHTML = items.map((item, i) => `
+          <li class="item-row" id="item-${i}">
+            <span class="item-name">${esc(item)}</span>
+            <button class="remove-btn" data-i="${i}" aria-label="remove ${esc(item)}">×</button>
+          </li>
+        `).join('');
+        list.querySelectorAll('.remove-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            if (spinning) return;
+            items.splice(parseInt(btn.dataset.i), 1);
+            saveItems();
+            clearResult();
+            render();
+          });
+        });
+      }
+      document.getElementById('pickBtn').disabled = items.length < 2 || spinning;
+    }
+
+    function clearResult() {
+      document.getElementById('resultArea').style.display = 'none';
+      document.getElementById('shareRow').style.display = 'none';
+      // remove any lingering winner class
+      document.querySelectorAll('.item-row.winner, .item-row.lit').forEach(el => {
+        el.classList.remove('winner', 'lit');
+      });
+    }
+
+    // ---------- Add item ----------
+    function addItem(raw) {
+      const text = raw.trim();
+      if (!text) return;
+      items.push(text);
+      saveItems();
+      clearResult();
+      render();
+    }
+
+    const input = document.getElementById('itemInput');
+    input.addEventListener('keydown', e => {
+      if (e.key === 'Enter') { addItem(input.value); input.value = ''; }
+    });
+    document.getElementById('addBtn').addEventListener('click', () => {
+      addItem(input.value); input.value = ''; input.focus();
+    });
+
+    // ---------- Presets ----------
+    document.getElementById('presets').addEventListener('click', e => {
+      const btn = e.target.closest('.preset-btn');
+      if (!btn || spinning) return;
+      const newItems = btn.dataset.items.split(',').map(s => s.trim()).filter(Boolean);
+      items = newItems;
+      saveItems();
+      clearResult();
+      render();
+    });
+
+    // ---------- Pick animation ----------
+    document.getElementById('pickBtn').addEventListener('click', doPick);
+
+    function doPick() {
+      if (items.length < 2 || spinning) return;
+      spinning = true;
+      clearResult();
+      document.getElementById('itemList').classList.add('spinning');
+      document.getElementById('pickBtn').disabled = true;
+
+      const winnerIdx = Math.floor(Math.random() * items.length);
+      // random number of full cycles (3–5) before landing on winner
+      const cycles = 3 + Math.floor(Math.random() * 3);
+      const totalTicks = cycles * items.length + winnerIdx + 1;
+
+      let tick = 0;
+      let current = -1;
+
+      function step() {
+        if (current >= 0) {
+          document.getElementById(`item-${current}`)?.classList.remove('lit');
+        }
+        current = tick % items.length;
+        document.getElementById(`item-${current}`)?.classList.add('lit');
+        tick++;
+
+        if (tick < totalTicks) {
+          // ease out: fast → slow
+          const progress = tick / totalTicks;
+          const delay = 45 + 305 * (progress * progress);
+          setTimeout(step, delay);
+        } else {
+          // land on winner
+          const el = document.getElementById(`item-${current}`);
+          el?.classList.remove('lit');
+          el?.classList.add('winner');
+          spinning = false;
+          document.getElementById('itemList').classList.remove('spinning');
+          document.getElementById('pickBtn').disabled = false;
+          showResult(items[current]);
+        }
+      }
+
+      step();
+    }
+
+    function showResult(text) {
+      const area = document.getElementById('resultArea');
+      document.getElementById('resultText').textContent = text;
+      area.style.display = 'block';
+      // re-trigger animation
+      area.style.animation = 'none';
+      void area.offsetWidth;
+      area.style.animation = '';
+      document.getElementById('shareRow').style.display = 'flex';
+    }
+
+    // ---------- Share ----------
+    document.getElementById('shareBtn').addEventListener('click', () => {
+      const encoded = items.map(i => encodeURIComponent(i)).join(',');
+      const url = `${location.origin}/pick/?items=${encoded}`;
+      navigator.clipboard.writeText(url).then(() => {
+        const btn = document.getElementById('shareBtn');
+        btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg> copied!`;
+        setTimeout(() => {
+          btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" /> </svg> copy link`;
+        }, 2000);
+      }).catch(() => { prompt('Copy this link:', url); });
+    });
+
+    // ---------- Init ----------
+    loadItems();
+    render();
+  </script>
+</body>
+</html>
