@@ -1,0 +1,396 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Hash Generator — play</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="/colors_and_type.css" />
+  <meta name="description" content="Instantly compute MD5, SHA-1, SHA-256, and SHA-512 hashes in your browser." />
+  <meta name="theme-color" content="#ffffff" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Hash Generator" />
+  <meta property="og:title" content="Hash Generator — play" />
+  <meta property="og:description" content="Instantly compute MD5, SHA-1, SHA-256, and SHA-512 hashes in your browser." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://play.kevinprk.com/hash/" />
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="Hash Generator — play" />
+  <meta name="twitter:description" content="Instantly compute MD5, SHA-1, SHA-256, and SHA-512 hashes in your browser." />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      background: var(--kp-bg);
+      color: var(--kp-fg);
+      font-family: var(--kp-font-sans);
+      -webkit-font-smoothing: antialiased;
+      font-size: var(--kp-text-base);
+      line-height: var(--kp-leading-normal);
+      min-height: 100vh;
+    }
+
+    a { color: inherit; text-decoration: none; }
+    button { font: inherit; cursor: pointer; background: none; border: none; color: inherit; }
+
+    .page { min-height: 100vh; display: flex; flex-direction: column; }
+
+    /* ---------- Theme toggle ---------- */
+    .theme-toggle {
+      width: 32px; height: 32px;
+      border-radius: var(--kp-radius-sm);
+      display: grid; place-items: center;
+      color: var(--kp-fg-2);
+      transition: background var(--kp-dur-fast) var(--kp-ease), color var(--kp-dur-fast) var(--kp-ease);
+      flex-shrink: 0;
+    }
+    .theme-toggle:hover { background: var(--kp-hover-bg); color: var(--kp-fg); }
+    .theme-toggle svg { width: 16px; height: 16px; }
+
+    /* ---------- Header ---------- */
+    .kp-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: var(--kp-space-5) var(--kp-page-pad);
+      max-width: var(--kp-content-width);
+      width: 100%;
+      margin: 0 auto;
+    }
+    .brand {
+      display: flex; align-items: center; gap: 10px;
+      font-size: var(--kp-text-md);
+      font-weight: var(--kp-weight-semi);
+      letter-spacing: var(--kp-tracking-snug);
+    }
+    .pi-mark {
+      width: 24px; height: 24px;
+      border-radius: var(--kp-radius-sm);
+      background: var(--kp-fg);
+      color: var(--kp-bg);
+      display: grid; place-items: center;
+      font-size: 14px; font-weight: 500;
+      flex-shrink: 0;
+      text-decoration: none;
+    }
+    .kp-header nav {
+      display: flex; align-items: center; gap: var(--kp-space-5);
+      font-size: var(--kp-text-sm);
+      color: var(--kp-fg-2);
+    }
+    .kp-header nav a { transition: color var(--kp-dur-fast) var(--kp-ease); }
+    .kp-header nav a:hover { color: var(--kp-fg); }
+
+    /* ---------- Main ---------- */
+    .kp-main {
+      max-width: var(--kp-content-width);
+      margin: 0 auto;
+      width: 100%;
+      padding: var(--kp-space-7) var(--kp-page-pad) var(--kp-space-9);
+      flex: 1;
+    }
+
+    .intro { margin-bottom: var(--kp-space-8); }
+    .intro h1 {
+      font-size: var(--kp-text-3xl);
+      font-weight: var(--kp-weight-semi);
+      letter-spacing: var(--kp-tracking-tight);
+      line-height: var(--kp-leading-tight);
+      color: var(--kp-fg);
+      margin-bottom: var(--kp-space-4);
+    }
+    .intro p {
+      font-size: var(--kp-text-md);
+      line-height: var(--kp-leading-relaxed);
+      color: var(--kp-fg-2);
+      max-width: 56ch;
+    }
+
+    /* ---------- Input ---------- */
+    .input-wrap { margin-bottom: var(--kp-space-7); }
+
+    textarea {
+      width: 100%;
+      min-height: 120px;
+      padding: var(--kp-space-4);
+      border: 1px solid var(--kp-border);
+      border-radius: var(--kp-radius-sm);
+      background: var(--kp-bg);
+      color: var(--kp-fg);
+      font-family: var(--kp-font-mono);
+      font-size: var(--kp-text-sm);
+      line-height: var(--kp-leading-relaxed);
+      resize: vertical;
+      outline: none;
+      transition: border-color var(--kp-dur-fast) var(--kp-ease);
+    }
+    textarea::placeholder { color: var(--kp-fg-3); }
+    textarea:focus { border-color: var(--kp-fg-2); }
+
+    .input-meta {
+      margin-top: var(--kp-space-2);
+      font-family: var(--kp-font-mono);
+      font-size: var(--kp-text-xs);
+      color: var(--kp-fg-3);
+      letter-spacing: 0.02em;
+    }
+
+    /* ---------- Section label ---------- */
+    .section-label {
+      font-size: var(--kp-text-xs);
+      font-family: var(--kp-font-mono);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--kp-fg-3);
+      margin-bottom: var(--kp-space-3);
+      padding-bottom: var(--kp-space-2);
+      border-bottom: 1px solid var(--kp-border);
+    }
+
+    /* ---------- Hash rows ---------- */
+    .hash-row {
+      display: grid;
+      grid-template-columns: 64px 1fr auto;
+      align-items: start;
+      gap: var(--kp-space-3) var(--kp-space-4);
+      padding: var(--kp-space-4) var(--kp-space-3);
+      border-bottom: 1px solid var(--kp-border-faint);
+    }
+
+    .hash-algo {
+      font-family: var(--kp-font-mono);
+      font-size: var(--kp-text-xs);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--kp-fg-3);
+      padding-top: 3px;
+    }
+
+    .hash-val {
+      font-family: var(--kp-font-mono);
+      font-size: var(--kp-text-sm);
+      color: var(--kp-fg);
+      word-break: break-all;
+      line-height: 1.5;
+    }
+    .hash-val.empty { color: var(--kp-fg-3); }
+
+    .copy-btn {
+      font-family: var(--kp-font-mono);
+      font-size: 10px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--kp-fg-3);
+      padding: 4px 8px;
+      border-radius: var(--kp-radius-sm);
+      transition: background var(--kp-dur-fast) var(--kp-ease), color var(--kp-dur-fast) var(--kp-ease);
+      white-space: nowrap;
+      margin-top: 1px;
+    }
+    .copy-btn:hover { background: var(--kp-hover-bg); color: var(--kp-fg); }
+    .copy-btn.copied { color: var(--kp-fg-2); }
+
+    /* ---------- Footer ---------- */
+    .kp-footer {
+      max-width: var(--kp-content-width);
+      margin: 0 auto;
+      width: 100%;
+      padding: var(--kp-space-6) var(--kp-page-pad);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: var(--kp-text-xs);
+      font-family: var(--kp-font-mono);
+      color: var(--kp-fg-3);
+      letter-spacing: -0.005em;
+    }
+    .kp-footer .pi { font-family: var(--kp-font-sans); font-size: 14px; color: var(--kp-fg-2); }
+  </style>
+</head>
+<body>
+  <div class="page">
+
+    <header>
+      <div class="kp-header">
+        <div class="brand">
+          <a href="https://kevinprk.com" class="pi-mark" aria-label="kevinprk.com">π</a>
+          play
+        </div>
+        <nav>
+          <a href="/">experiments</a>
+          <a href="https://kevinprk.com">kevinprk.com</a>
+          <button class="theme-toggle" id="themeToggle" aria-label="toggle theme" title="toggle theme">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M21 12.79A9 9 0 1111.21 3a7 7 0 009.79 9.79z"/>
+            </svg>
+          </button>
+        </nav>
+      </div>
+    </header>
+
+    <main class="kp-main">
+      <section class="intro">
+        <h1>Hash Generator</h1>
+        <p>Type anything to instantly compute its MD5, SHA-1, SHA-256, and SHA-512 hashes. Everything runs entirely in your browser — your input is never sent to any server.</p>
+      </section>
+
+      <div class="input-wrap">
+        <textarea id="hashInput" placeholder="Type or paste anything…" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off"></textarea>
+        <div class="input-meta" id="inputMeta">0 characters · 0 bytes</div>
+      </div>
+
+      <div class="section-label">algorithms</div>
+      <div role="list">
+        <div class="hash-row" role="listitem">
+          <span class="hash-algo">MD5</span>
+          <span class="hash-val empty" id="out-md5">—</span>
+          <button class="copy-btn" data-algo="md5">copy</button>
+        </div>
+        <div class="hash-row" role="listitem">
+          <span class="hash-algo">SHA-1</span>
+          <span class="hash-val empty" id="out-sha1">—</span>
+          <button class="copy-btn" data-algo="sha1">copy</button>
+        </div>
+        <div class="hash-row" role="listitem">
+          <span class="hash-algo">SHA-256</span>
+          <span class="hash-val empty" id="out-sha256">—</span>
+          <button class="copy-btn" data-algo="sha256">copy</button>
+        </div>
+        <div class="hash-row" role="listitem">
+          <span class="hash-algo">SHA-512</span>
+          <span class="hash-val empty" id="out-sha512">—</span>
+          <button class="copy-btn" data-algo="sha512">copy</button>
+        </div>
+      </div>
+    </main>
+
+    <footer>
+      <div class="kp-footer">
+        <span>© <span id="year"></span> kevin park</span>
+        <span class="pi">π</span>
+      </div>
+    </footer>
+
+  </div>
+
+  <script>
+    document.getElementById('year').textContent = new Date().getFullYear();
+
+    // ---- Theme toggle ----
+    const html = document.documentElement;
+    const btn = document.getElementById('themeToggle');
+    const sunIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="4"/><path stroke-linecap="round" d="M12 3v1.5M12 19.5V21M3 12h1.5M19.5 12H21M5.6 5.6l1.06 1.06M17.34 17.34l1.06 1.06M5.6 18.4l1.06-1.06M17.34 6.66l1.06-1.06"/></svg>`;
+    const moonIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M21 12.79A9 9 0 1111.21 3a7 7 0 009.79 9.79z"/></svg>`;
+    let theme = localStorage.getItem('kp-theme') || 'light';
+    function applyTheme(t) { html.setAttribute('data-theme', t); btn.innerHTML = t === 'dark' ? sunIcon : moonIcon; localStorage.setItem('kp-theme', t); }
+    applyTheme(theme);
+    btn.addEventListener('click', () => { theme = theme === 'light' ? 'dark' : 'light'; applyTheme(theme); });
+
+    // ---- MD5 (RFC 1321, pure JS) ----
+    function md5(str) {
+      const bytes = new TextEncoder().encode(str);
+      const l = bytes.length;
+      const m = new Array(((l + 8 >> 6) + 1) * 16).fill(0);
+      for (let i = 0; i < l; i++) m[i >> 2] |= bytes[i] << ((i & 3) << 3);
+      m[l >> 2] |= 0x80 << ((l & 3) << 3);
+      m[m.length - 2] = l << 3;
+      m[m.length - 1] = l >>> 29;
+
+      function add(x, y) { const lsw = (x & 0xffff) + (y & 0xffff); return (((x >> 16) + (y >> 16) + (lsw >> 16)) << 16) | (lsw & 0xffff); }
+      function rol(n, c) { return (n << c) | (n >>> (32 - c)); }
+      function cmn(q, a, b, x, s, t) { return add(rol(add(add(a, q), add(x, t)), s), b); }
+      function ff(a,b,c,d,x,s,t) { return cmn((b&c)|(~b&d),a,b,x,s,t); }
+      function gg(a,b,c,d,x,s,t) { return cmn((b&d)|(c&~d),a,b,x,s,t); }
+      function hh(a,b,c,d,x,s,t) { return cmn(b^c^d,a,b,x,s,t); }
+      function ii(a,b,c,d,x,s,t) { return cmn(c^(b|~d),a,b,x,s,t); }
+
+      let a=1732584193,b=-271733879,c=-1732584194,d=271733878;
+      for (let i = 0; i < m.length; i += 16) {
+        const A=a,B=b,C=c,D=d;
+        a=ff(a,b,c,d,m[i+0],7,-680876936);d=ff(d,a,b,c,m[i+1],12,-389564586);c=ff(c,d,a,b,m[i+2],17,606105819);b=ff(b,c,d,a,m[i+3],22,-1044525330);
+        a=ff(a,b,c,d,m[i+4],7,-176418897);d=ff(d,a,b,c,m[i+5],12,1200080426);c=ff(c,d,a,b,m[i+6],17,-1473231341);b=ff(b,c,d,a,m[i+7],22,-45705983);
+        a=ff(a,b,c,d,m[i+8],7,1770035416);d=ff(d,a,b,c,m[i+9],12,-1958414417);c=ff(c,d,a,b,m[i+10],17,-42063);b=ff(b,c,d,a,m[i+11],22,-1990404162);
+        a=ff(a,b,c,d,m[i+12],7,1804603682);d=ff(d,a,b,c,m[i+13],12,-40341101);c=ff(c,d,a,b,m[i+14],17,-1502002290);b=ff(b,c,d,a,m[i+15],22,1236535329);
+        a=gg(a,b,c,d,m[i+1],5,-165796510);d=gg(d,a,b,c,m[i+6],9,-1069501632);c=gg(c,d,a,b,m[i+11],14,643717713);b=gg(b,c,d,a,m[i+0],20,-373897302);
+        a=gg(a,b,c,d,m[i+5],5,-701558691);d=gg(d,a,b,c,m[i+10],9,38016083);c=gg(c,d,a,b,m[i+15],14,-660478335);b=gg(b,c,d,a,m[i+4],20,-405537848);
+        a=gg(a,b,c,d,m[i+9],5,568446438);d=gg(d,a,b,c,m[i+14],9,-1019803690);c=gg(c,d,a,b,m[i+3],14,-187363961);b=gg(b,c,d,a,m[i+8],20,1163531501);
+        a=gg(a,b,c,d,m[i+13],5,-1444681467);d=gg(d,a,b,c,m[i+2],9,-51403784);c=gg(c,d,a,b,m[i+7],14,1735328473);b=gg(b,c,d,a,m[i+12],20,-1926607734);
+        a=hh(a,b,c,d,m[i+5],4,-378558);d=hh(d,a,b,c,m[i+8],11,-2022574463);c=hh(c,d,a,b,m[i+11],16,1839030562);b=hh(b,c,d,a,m[i+14],23,-35309556);
+        a=hh(a,b,c,d,m[i+1],4,-1530992060);d=hh(d,a,b,c,m[i+4],11,1272893353);c=hh(c,d,a,b,m[i+7],16,-155497632);b=hh(b,c,d,a,m[i+10],23,-1094730640);
+        a=hh(a,b,c,d,m[i+13],4,681279174);d=hh(d,a,b,c,m[i+0],11,-358537222);c=hh(c,d,a,b,m[i+3],16,-722521979);b=hh(b,c,d,a,m[i+6],23,76029189);
+        a=hh(a,b,c,d,m[i+9],4,-640364487);d=hh(d,a,b,c,m[i+12],11,-421815835);c=hh(c,d,a,b,m[i+15],16,530742520);b=hh(b,c,d,a,m[i+2],23,-995338651);
+        a=ii(a,b,c,d,m[i+0],6,-198630844);d=ii(d,a,b,c,m[i+7],10,1126891415);c=ii(c,d,a,b,m[i+14],15,-1416354905);b=ii(b,c,d,a,m[i+5],21,-57434055);
+        a=ii(a,b,c,d,m[i+12],6,1700485571);d=ii(d,a,b,c,m[i+3],10,-1894986606);c=ii(c,d,a,b,m[i+10],15,-1051523);b=ii(b,c,d,a,m[i+1],21,-2054922799);
+        a=ii(a,b,c,d,m[i+8],6,1873313359);d=ii(d,a,b,c,m[i+15],10,-30611744);c=ii(c,d,a,b,m[i+6],15,-1560198380);b=ii(b,c,d,a,m[i+13],21,1309151649);
+        a=ii(a,b,c,d,m[i+4],6,-145523070);d=ii(d,a,b,c,m[i+11],10,-1120210379);c=ii(c,d,a,b,m[i+2],15,718787259);b=ii(b,c,d,a,m[i+9],21,-343485551);
+        a=add(a,A);b=add(b,B);c=add(c,C);d=add(d,D);
+      }
+      return [a,b,c,d].map(n =>
+        Array.from({length:4}, (_,j) => ((n >> (j*8)) & 0xff).toString(16).padStart(2,'0')).join('')
+      ).join('');
+    }
+
+    // ---- SHA via Web Crypto API ----
+    async function sha(algo, bytes) {
+      const buf = await crypto.subtle.digest(algo, bytes);
+      return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+    }
+
+    // ---- UI ----
+    const inputEl = document.getElementById('hashInput');
+    const metaEl  = document.getElementById('inputMeta');
+    const outs = {
+      md5:    document.getElementById('out-md5'),
+      sha1:   document.getElementById('out-sha1'),
+      sha256: document.getElementById('out-sha256'),
+      sha512: document.getElementById('out-sha512'),
+    };
+
+    const EMPTY = '—';
+    let reqId = 0;
+
+    function setEmpty() {
+      for (const el of Object.values(outs)) { el.textContent = EMPTY; el.classList.add('empty'); }
+    }
+    function setVal(id, val) { outs[id].textContent = val; outs[id].classList.remove('empty'); }
+
+    async function update() {
+      const id = ++reqId;
+      const str = inputEl.value;
+      const bytes = new TextEncoder().encode(str);
+      const chars = str.length, byteLen = bytes.length;
+      metaEl.textContent = `${chars.toLocaleString()} character${chars !== 1 ? 's' : ''} · ${byteLen.toLocaleString()} byte${byteLen !== 1 ? 's' : ''}`;
+
+      if (!str) { setEmpty(); return; }
+
+      setVal('md5', md5(str));
+
+      const [h1, h256, h512] = await Promise.all([
+        sha('SHA-1', bytes),
+        sha('SHA-256', bytes),
+        sha('SHA-512', bytes),
+      ]);
+      if (id !== reqId) return;
+      setVal('sha1', h1);
+      setVal('sha256', h256);
+      setVal('sha512', h512);
+    }
+
+    inputEl.addEventListener('input', update);
+
+    // ---- Copy buttons ----
+    document.querySelectorAll('.copy-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const val = outs[btn.dataset.algo].textContent;
+        if (val === EMPTY) return;
+        navigator.clipboard.writeText(val).then(() => {
+          btn.textContent = 'copied';
+          btn.classList.add('copied');
+          setTimeout(() => { btn.textContent = 'copy'; btn.classList.remove('copied'); }, 1500);
+        }).catch(() => {});
+      });
+    });
+  </script>
+</body>
+</html>
