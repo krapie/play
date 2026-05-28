@@ -357,7 +357,7 @@
     function updateTiles() {
       map.removeLayer(tileLayer);
       tileLayer = L.tileLayer(TILES[theme], { attribution: ATTR, subdomains: 'abcd', maxZoom: 19 }).addTo(map);
-      if (polylineLayer) polylineLayer.setStyle({ color: fgColor() });
+      segmentLayers.forEach(l => l.setStyle({ color: fgColor() }));
       if (cableGeoLayer) { cableGeoLayer.setStyle({ color: cableColor() }); cableGeoLayer.bringToBack(); }
     }
 
@@ -373,8 +373,8 @@
     }
     // ── Trace state ────────────────────────────────────────────────
     let evtSource     = null;
-    let polylineLayer = null;
-    let segments      = [[]]; // single segment; segments[0] holds all normalized [lat, normLon] pairs
+    let segmentLayers = [];
+    let hopPoints     = []; // [lat, normLon] per geolocated hop, for fitBounds
     let markers       = [];
     let markersByHop  = new Map();
     let cableGeoLayer = null;
@@ -383,11 +383,12 @@
     themeBtn.addEventListener('click', () => { theme = theme === 'light' ? 'dark' : 'light'; applyTheme(theme); });
 
     function clearTrace() {
-      segments = [[]];
+      hopPoints = [];
       markers.forEach(m => map.removeLayer(m));
       markers = [];
       markersByHop.clear();
-      if (polylineLayer) { map.removeLayer(polylineLayer); polylineLayer = null; }
+      segmentLayers.forEach(l => map.removeLayer(l));
+      segmentLayers = [];
       const hopList  = document.getElementById('hopList');
       const hopEmpty = document.getElementById('hopEmpty');
       hopList.innerHTML = '';
@@ -404,27 +405,52 @@
       }
     }
 
-    // Normalize each hop's lon to be within 180° of the previous hop so the
-    // polyline always takes the short-way-around path (e.g. eastward across
-    // the Pacific rather than westward through Asia/Europe). The same normLon
-    // is used for both the marker and the polyline point so they always
-    // co-locate in the same Leaflet world copy. fitView uses the same
-    // normLons to center the map on the correct world copy.
     function fitView() {
-      if (segments[0].length < 2) return;
-      const lats = segments[0].map(ll => ll[0]);
-      const lons = segments[0].map(ll => ll[1]); // already normalized
+      if (hopPoints.length < 2) return;
+      const lats = hopPoints.map(ll => ll[0]);
+      const lons = hopPoints.map(ll => ll[1]);
       map.fitBounds(
         L.latLngBounds([Math.min(...lats), Math.min(...lons)], [Math.max(...lats), Math.max(...lons)]),
         { paddingTopLeft: [260, 60], paddingBottomRight: [40, 60], animate: false }
       );
     }
 
+    // Compute great-circle (geodesic) intermediate points between two lat/lon pairs.
+    // Normalises output longitudes to be continuous from lon1, so Leaflet renders
+    // the arc in the same world-copy as the endpoints (no antimeridian wrap jump).
+    function greatCirclePoints(lat1, lon1, lat2, lon2, n = 60) {
+      const toRad = d => d * Math.PI / 180;
+      const toDeg = r => r * 180 / Math.PI;
+      const φ1 = toRad(lat1), λ1 = toRad(lon1);
+      const φ2 = toRad(lat2), λ2 = toRad(lon2);
+      const d = 2 * Math.asin(Math.sqrt(
+        Math.sin((φ2 - φ1) / 2) ** 2 +
+        Math.cos(φ1) * Math.cos(φ2) * Math.sin((λ2 - λ1) / 2) ** 2
+      ));
+      if (d < 1e-6) return [[lat1, lon1], [lat2, lon2]];
+      const pts = [];
+      for (let i = 0; i <= n; i++) {
+        const f = i / n;
+        const A = Math.sin((1 - f) * d) / Math.sin(d);
+        const B = Math.sin(f * d) / Math.sin(d);
+        const x = A * Math.cos(φ1) * Math.cos(λ1) + B * Math.cos(φ2) * Math.cos(λ2);
+        const y = A * Math.cos(φ1) * Math.sin(λ1) + B * Math.cos(φ2) * Math.sin(λ2);
+        const z = A * Math.sin(φ1) + B * Math.sin(φ2);
+        pts.push([toDeg(Math.atan2(z, Math.sqrt(x * x + y * y))), toDeg(Math.atan2(y, x))]);
+      }
+      while (pts[0][1] - lon1 > 180) pts[0][1] -= 360;
+      while (lon1 - pts[0][1] > 180) pts[0][1] += 360;
+      for (let i = 1; i < pts.length; i++) {
+        while (pts[i][1] - pts[i - 1][1] > 180) pts[i][1] -= 360;
+        while (pts[i - 1][1] - pts[i][1] > 180) pts[i][1] += 360;
+      }
+      return pts;
+    }
+
     function addMarker(hop) {
-      // Normalize lon relative to previous hop so path goes the short way round
       let normLon = hop.lon;
-      if (segments[0].length > 0) {
-        const prevLon = segments[0][segments[0].length - 1][1];
+      if (hopPoints.length > 0) {
+        const prevLon = hopPoints[hopPoints.length - 1][1];
         while (normLon - prevLon > 180) normLon -= 360;
         while (prevLon - normLon > 180) normLon += 360;
       }
@@ -447,15 +473,16 @@
       markers.push(m);
       markersByHop.set(hop.hop, { marker: m, hop });
 
-      segments[0].push([hop.lat, normLon]);
-
-      if (polylineLayer) {
-        polylineLayer.setLatLngs(segments[0]);
-      } else {
-        polylineLayer = L.polyline(segments[0], { color: fgColor(), weight: 1.5, opacity: 0.55 }).addTo(map);
+      if (hopPoints.length > 0) {
+        const prev = hopPoints[hopPoints.length - 1];
+        const arcPts = greatCirclePoints(prev[0], prev[1], hop.lat, normLon);
+        const seg = L.polyline(arcPts, { color: fgColor(), weight: 1.5, opacity: 0.55 }).addTo(map);
+        segmentLayers.push(seg);
       }
 
-      if (segments[0].length > 1) {
+      hopPoints.push([hop.lat, normLon]);
+
+      if (hopPoints.length > 1) {
         fitView();
       } else {
         map.setView([hop.lat, normLon], 4);
