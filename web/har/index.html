@@ -1,0 +1,1009 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>HAR Analyzer — play</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="/colors_and_type.css" />
+  <meta name="description" content="Analyze Chrome HAR files locally — waterfall, timings, headers. Nothing leaves your browser." />
+  <meta name="theme-color" content="#ffffff" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="HAR Analyzer" />
+  <meta property="og:title" content="HAR Analyzer — play" />
+  <meta property="og:description" content="Analyze Chrome HAR files locally — waterfall, timings, headers. Nothing leaves your browser." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://play.kevinprk.com/har/" />
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="HAR Analyzer — play" />
+  <meta name="twitter:description" content="Analyze Chrome HAR files locally — waterfall, timings, headers. Nothing leaves your browser." />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      background: var(--kp-bg);
+      color: var(--kp-fg);
+      font-family: var(--kp-font-sans);
+      -webkit-font-smoothing: antialiased;
+      font-size: var(--kp-text-base);
+      line-height: var(--kp-leading-normal);
+      min-height: 100vh;
+    }
+
+    a { color: inherit; text-decoration: none; }
+    button { font: inherit; cursor: pointer; background: none; border: none; color: inherit; }
+
+    .page { min-height: 100vh; display: flex; flex-direction: column; }
+
+    /* ---------- Theme toggle ---------- */
+    .theme-toggle {
+      width: 32px; height: 32px;
+      border-radius: var(--kp-radius-sm);
+      display: grid; place-items: center;
+      color: var(--kp-fg-2);
+      transition: background var(--kp-dur-fast) var(--kp-ease), color var(--kp-dur-fast) var(--kp-ease);
+      flex-shrink: 0;
+    }
+    .theme-toggle:hover { background: var(--kp-hover-bg); color: var(--kp-fg); }
+    .theme-toggle svg { width: 16px; height: 16px; }
+
+    /* ---------- Header ---------- */
+    .kp-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: var(--kp-space-5) var(--kp-page-pad);
+      max-width: var(--kp-content-width);
+      width: 100%; margin: 0 auto;
+    }
+    .brand {
+      display: flex; align-items: center; gap: 10px;
+      font-size: var(--kp-text-md);
+      font-weight: var(--kp-weight-semi);
+      letter-spacing: var(--kp-tracking-snug);
+    }
+    .pi-mark {
+      width: 24px; height: 24px;
+      border-radius: var(--kp-radius-sm);
+      background: var(--kp-fg); color: var(--kp-bg);
+      display: grid; place-items: center;
+      font-size: 14px; font-weight: 500;
+      flex-shrink: 0; text-decoration: none;
+    }
+    .kp-header nav {
+      display: flex; align-items: center; gap: var(--kp-space-5);
+      font-size: var(--kp-text-sm); color: var(--kp-fg-2);
+    }
+    .kp-header nav a { transition: color var(--kp-dur-fast) var(--kp-ease); }
+    .kp-header nav a:hover { color: var(--kp-fg); }
+
+    /* ---------- Main ---------- */
+    .kp-main {
+      max-width: var(--kp-content-width);
+      margin: 0 auto; width: 100%;
+      padding: var(--kp-space-7) var(--kp-page-pad) var(--kp-space-9);
+      flex: 1;
+    }
+
+    .intro { margin-bottom: var(--kp-space-8); }
+    .intro h1 {
+      font-size: var(--kp-text-3xl);
+      font-weight: var(--kp-weight-semi);
+      letter-spacing: var(--kp-tracking-tight);
+      line-height: var(--kp-leading-tight);
+      margin-bottom: var(--kp-space-4);
+    }
+    .intro p {
+      font-size: var(--kp-text-md);
+      line-height: var(--kp-leading-relaxed);
+      color: var(--kp-fg-2); max-width: 56ch;
+    }
+
+    /* ---------- Drop zone ---------- */
+    .drop-zone {
+      border: 1px dashed var(--kp-border);
+      border-radius: var(--kp-radius-sm);
+      padding: var(--kp-space-9) var(--kp-space-7);
+      text-align: center;
+      cursor: pointer;
+      transition: border-color var(--kp-dur-fast) var(--kp-ease), background var(--kp-dur-fast) var(--kp-ease);
+      user-select: none;
+    }
+    .drop-zone:hover, .drop-zone.dragging {
+      border-color: var(--kp-fg-2);
+      background: var(--kp-hover-bg);
+    }
+    .drop-zone svg {
+      width: 32px; height: 32px;
+      color: var(--kp-fg-3);
+      margin-bottom: var(--kp-space-4);
+    }
+    .drop-zone p {
+      font-size: var(--kp-text-md);
+      color: var(--kp-fg-2);
+      margin-bottom: var(--kp-space-2);
+    }
+    .drop-link { text-decoration: underline; text-underline-offset: 3px; }
+    .drop-hint {
+      font-family: var(--kp-font-mono);
+      font-size: var(--kp-text-xs) !important;
+      color: var(--kp-fg-3) !important;
+      margin-bottom: 0 !important;
+    }
+
+    /* ---------- Error bar ---------- */
+    .error-bar {
+      display: none; align-items: center; gap: var(--kp-space-3);
+      padding: var(--kp-space-3) var(--kp-space-4);
+      border: 1px solid var(--kp-border);
+      border-radius: var(--kp-radius-sm);
+      margin-bottom: var(--kp-space-5);
+      background: var(--kp-hover-bg);
+    }
+    .error-bar.visible { display: flex; }
+    .error-bar svg { width: 16px; height: 16px; flex-shrink: 0; color: var(--kp-fg-2); }
+    .error-msg { font-family: var(--kp-font-mono); font-size: var(--kp-text-sm); color: var(--kp-fg-2); }
+
+    /* ---------- Summary cards ---------- */
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: var(--kp-space-4);
+      margin-bottom: var(--kp-space-7);
+    }
+    @media (max-width: 600px) { .summary-grid { grid-template-columns: repeat(2, 1fr); } }
+
+    .summary-card {
+      padding: var(--kp-space-4) var(--kp-space-5);
+      border: 1px solid var(--kp-border);
+      border-radius: var(--kp-radius-sm);
+    }
+    .summary-value {
+      font-size: var(--kp-text-2xl);
+      font-weight: var(--kp-weight-semi);
+      letter-spacing: var(--kp-tracking-tight);
+      line-height: 1;
+      margin-bottom: var(--kp-space-2);
+    }
+    .summary-value.has-errors { font-weight: var(--kp-weight-semi); }
+    .summary-label {
+      font-family: var(--kp-font-mono);
+      font-size: var(--kp-text-xs);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--kp-fg-3);
+    }
+
+    /* ---------- Filter bar ---------- */
+    .filter-bar {
+      display: flex; align-items: center; gap: var(--kp-space-3);
+      margin-bottom: var(--kp-space-4);
+      flex-wrap: wrap;
+    }
+
+    .type-pills {
+      display: flex; gap: 1px;
+      border: 1px solid var(--kp-border);
+      border-radius: var(--kp-radius-sm);
+      overflow: hidden;
+    }
+    .type-pill {
+      font-family: var(--kp-font-mono);
+      font-size: var(--kp-text-xs);
+      letter-spacing: 0.04em;
+      color: var(--kp-fg-3);
+      padding: 5px 10px;
+      background: var(--kp-bg);
+      border-right: 1px solid var(--kp-border);
+      transition: background var(--kp-dur-fast) var(--kp-ease), color var(--kp-dur-fast) var(--kp-ease);
+      white-space: nowrap; cursor: pointer;
+    }
+    .type-pill:last-child { border-right: none; }
+    .type-pill:hover { background: var(--kp-hover-bg); color: var(--kp-fg); }
+    .type-pill.active { background: var(--kp-fg); color: var(--kp-bg); }
+
+    .url-search {
+      flex: 1; min-width: 160px;
+      padding: 5px var(--kp-space-3);
+      border: 1px solid var(--kp-border);
+      border-radius: var(--kp-radius-sm);
+      background: var(--kp-bg); color: var(--kp-fg);
+      font-family: var(--kp-font-mono);
+      font-size: var(--kp-text-xs);
+      outline: none;
+      transition: border-color var(--kp-dur-fast) var(--kp-ease);
+    }
+    .url-search::placeholder { color: var(--kp-fg-3); }
+    .url-search:focus { border-color: var(--kp-fg-2); }
+
+    .filter-toggle {
+      font-family: var(--kp-font-mono);
+      font-size: var(--kp-text-xs);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--kp-fg-3);
+      padding: 5px 12px;
+      border: 1px solid var(--kp-border);
+      border-radius: var(--kp-radius-sm);
+      background: var(--kp-bg);
+      transition: background var(--kp-dur-fast) var(--kp-ease), color var(--kp-dur-fast) var(--kp-ease);
+      white-space: nowrap;
+    }
+    .filter-toggle:hover { background: var(--kp-hover-bg); color: var(--kp-fg); }
+    .filter-toggle.active { background: var(--kp-fg); color: var(--kp-bg); }
+
+    /* ---------- Section label / count ---------- */
+    .section-header {
+      display: flex; align-items: baseline; justify-content: space-between;
+      font-size: var(--kp-text-xs);
+      font-family: var(--kp-font-mono);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--kp-fg-3);
+      margin-bottom: var(--kp-space-3);
+      padding-bottom: var(--kp-space-2);
+      border-bottom: 1px solid var(--kp-border);
+    }
+
+    /* ---------- Table ---------- */
+    .table-wrap {
+      overflow-x: auto;
+      margin-bottom: var(--kp-space-6);
+      border: 1px solid var(--kp-border);
+      border-radius: var(--kp-radius-sm);
+    }
+
+    table {
+      width: 100%; border-collapse: collapse;
+      font-size: var(--kp-text-sm);
+    }
+
+    thead tr {
+      border-bottom: 1px solid var(--kp-border);
+    }
+    th {
+      padding: var(--kp-space-3) var(--kp-space-3);
+      text-align: left;
+      font-family: var(--kp-font-mono);
+      font-size: var(--kp-text-xs);
+      font-weight: normal;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--kp-fg-3);
+      white-space: nowrap;
+      background: var(--kp-bg);
+    }
+    th.sortable { cursor: pointer; user-select: none; }
+    th.sortable:hover { color: var(--kp-fg); }
+    th.sort-active { color: var(--kp-fg-2); }
+
+    td {
+      padding: var(--kp-space-2) var(--kp-space-3);
+      border-bottom: 1px solid var(--kp-border-faint);
+      vertical-align: middle;
+      white-space: nowrap;
+    }
+
+    .entry-row { cursor: pointer; transition: background var(--kp-dur-fast) var(--kp-ease); }
+    .entry-row:hover { background: var(--kp-hover-bg); }
+    .entry-row.expanded { background: var(--kp-hover-bg); }
+    .entry-row:last-child td { border-bottom: none; }
+
+    /* columns */
+    .col-method { width: 56px; }
+    .col-status { width: 52px; font-family: var(--kp-font-mono); font-size: var(--kp-text-xs); }
+    .col-type   { width: 56px; }
+    .col-size   { width: 72px; font-family: var(--kp-font-mono); font-size: var(--kp-text-xs); text-align: right; }
+    .col-time   { width: 76px; font-family: var(--kp-font-mono); font-size: var(--kp-text-xs); text-align: right; }
+    .col-url    { max-width: 0; width: 99%; }
+    .col-waterfall { width: 180px; min-width: 120px; }
+
+    .url-text {
+      display: block;
+      overflow: hidden; text-overflow: ellipsis;
+      white-space: nowrap;
+      color: var(--kp-fg-2);
+      font-size: var(--kp-text-sm);
+      max-width: 360px;
+    }
+    .url-host {
+      font-family: var(--kp-font-mono);
+      font-size: 11px;
+      color: var(--kp-fg-3);
+      display: block;
+      overflow: hidden; text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 360px;
+      margin-top: 1px;
+    }
+
+    .method-badge {
+      font-family: var(--kp-font-mono);
+      font-size: 10px;
+      letter-spacing: 0.04em;
+      color: var(--kp-fg-3);
+    }
+
+    .type-badge {
+      font-family: var(--kp-font-mono);
+      font-size: 10px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--kp-fg-3);
+    }
+
+    .status-error { font-weight: var(--kp-weight-semi); color: var(--kp-fg); }
+
+    /* ---------- Waterfall bar ---------- */
+    .wf-track {
+      width: 100%; height: 12px;
+      display: flex; align-items: center;
+      position: relative;
+    }
+    .wf-offset { height: 100%; flex-shrink: 0; }
+    .wf-conn   { height: 8px; background: var(--kp-border); flex-shrink: 0; min-width: 1px; }
+    .wf-wait   { height: 8px; background: var(--kp-fg-3);  flex-shrink: 0; min-width: 1px; }
+    .wf-recv   { height: 8px; background: var(--kp-fg-2);  flex-shrink: 0; min-width: 1px; }
+
+    /* ---------- Detail row ---------- */
+    .detail-row td { padding: 0; border-bottom: 1px solid var(--kp-border); cursor: default; }
+    .detail-panel {
+      padding: var(--kp-space-5) var(--kp-space-4);
+      background: var(--kp-hover-bg);
+      display: flex; flex-direction: column; gap: var(--kp-space-5);
+    }
+    .detail-cols { display: grid; grid-template-columns: 1fr 1fr; gap: var(--kp-space-5); }
+    @media (max-width: 700px) { .detail-cols { grid-template-columns: 1fr; } }
+
+    .detail-label {
+      font-family: var(--kp-font-mono);
+      font-size: var(--kp-text-xs);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--kp-fg-3);
+      margin-bottom: var(--kp-space-3);
+      padding-bottom: var(--kp-space-2);
+      border-bottom: 1px solid var(--kp-border);
+    }
+
+    /* Timing breakdown */
+    .timing-rows { display: flex; flex-direction: column; gap: var(--kp-space-2); }
+    .timing-row {
+      display: grid;
+      grid-template-columns: 100px 1fr 64px;
+      align-items: center;
+      gap: var(--kp-space-3);
+    }
+    .timing-name {
+      font-family: var(--kp-font-mono);
+      font-size: var(--kp-text-xs);
+      color: var(--kp-fg-3);
+      white-space: nowrap;
+    }
+    .timing-bar-wrap {
+      height: 6px;
+      background: var(--kp-border-faint);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    .timing-bar {
+      height: 100%;
+      background: var(--kp-fg-2);
+      border-radius: 2px;
+      min-width: 2px;
+    }
+    .timing-val {
+      font-family: var(--kp-font-mono);
+      font-size: var(--kp-text-xs);
+      color: var(--kp-fg-2);
+      text-align: right;
+    }
+    .timing-row.timing-total .timing-name { color: var(--kp-fg-2); }
+    .timing-row.timing-total .timing-val  { color: var(--kp-fg); font-weight: var(--kp-weight-medium); }
+
+    /* Headers list */
+    .headers-list {
+      display: flex; flex-direction: column; gap: 4px;
+      max-height: 240px; overflow-y: auto;
+    }
+    .header-row {
+      display: grid; grid-template-columns: 160px 1fr;
+      gap: var(--kp-space-3);
+      font-family: var(--kp-font-mono);
+      font-size: var(--kp-text-xs);
+      line-height: 1.5;
+    }
+    .header-name { color: var(--kp-fg-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .header-value { color: var(--kp-fg-2); word-break: break-all; white-space: normal; }
+    .detail-empty { font-family: var(--kp-font-mono); font-size: var(--kp-text-xs); color: var(--kp-fg-3); }
+
+    /* ---------- Bottom bar ---------- */
+    .bottom-bar {
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: var(--kp-space-3);
+      margin-bottom: var(--kp-space-6);
+    }
+    .stats-line {
+      font-family: var(--kp-font-mono);
+      font-size: var(--kp-text-xs);
+      color: var(--kp-fg-3);
+      display: flex; gap: var(--kp-space-4); flex-wrap: wrap;
+    }
+
+    .reset-btn {
+      font-family: var(--kp-font-mono);
+      font-size: var(--kp-text-xs);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--kp-fg-3);
+      padding: 5px 12px;
+      border: 1px solid var(--kp-border);
+      border-radius: var(--kp-radius-sm);
+      background: var(--kp-bg);
+      transition: background var(--kp-dur-fast) var(--kp-ease), color var(--kp-dur-fast) var(--kp-ease);
+    }
+    .reset-btn:hover { background: var(--kp-hover-bg); color: var(--kp-fg); }
+
+    /* ---------- Waterfall legend ---------- */
+    .wf-legend {
+      display: flex; gap: var(--kp-space-5); align-items: center;
+    }
+    .legend-item {
+      display: flex; align-items: center; gap: 6px;
+      font-family: var(--kp-font-mono);
+      font-size: var(--kp-text-xs);
+      color: var(--kp-fg-3);
+    }
+    .legend-swatch {
+      width: 20px; height: 6px; border-radius: 2px; flex-shrink: 0;
+    }
+    .legend-conn { background: var(--kp-border); }
+    .legend-wait { background: var(--kp-fg-3); }
+    .legend-recv { background: var(--kp-fg-2); }
+
+    /* ---------- Empty state ---------- */
+    .empty-state {
+      padding: var(--kp-space-8) var(--kp-space-4);
+      text-align: center;
+      font-family: var(--kp-font-mono);
+      font-size: var(--kp-text-sm);
+      color: var(--kp-fg-3);
+    }
+
+    /* ---------- Footer ---------- */
+    .kp-footer {
+      max-width: var(--kp-content-width); margin: 0 auto; width: 100%;
+      padding: var(--kp-space-6) var(--kp-page-pad);
+      display: flex; align-items: center; justify-content: space-between;
+      font-size: var(--kp-text-xs); font-family: var(--kp-font-mono);
+      color: var(--kp-fg-3); letter-spacing: -0.005em;
+    }
+    .kp-footer .pi { font-family: var(--kp-font-sans); font-size: 14px; color: var(--kp-fg-2); }
+  </style>
+</head>
+<body>
+  <div class="page">
+
+    <header>
+      <div class="kp-header">
+        <div class="brand">
+          <a href="https://kevinprk.com" class="pi-mark" aria-label="kevinprk.com">π</a>
+          play
+        </div>
+        <nav>
+          <a href="/">experiments</a>
+          <a href="https://kevinprk.com">kevinprk.com</a>
+          <button class="theme-toggle" id="themeToggle" aria-label="toggle theme">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M21 12.79A9 9 0 1111.21 3a7 7 0 009.79 9.79z"/>
+            </svg>
+          </button>
+        </nav>
+      </div>
+    </header>
+
+    <main class="kp-main">
+      <section class="intro">
+        <h1>HAR Analyzer</h1>
+        <p>Drop a Chrome HAR file to inspect the full request waterfall, timings, and headers. Everything runs in your browser — your data never leaves this page.</p>
+      </section>
+
+      <div class="error-bar" id="errorBar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+        </svg>
+        <span class="error-msg" id="errorMsg"></span>
+      </div>
+
+      <!-- Drop zone -->
+      <div class="drop-zone" id="dropZone">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m.75 12l3 3m0 0l3-3m-3 3v-6m-1.5-9H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+        </svg>
+        <p>Drop a <strong>.har</strong> file here, or <span class="drop-link">click to open</span></p>
+        <p class="drop-hint">Your file is never uploaded — parsed entirely in this browser.</p>
+        <input type="file" id="fileInput" accept=".har,application/json" hidden />
+      </div>
+
+      <!-- Results -->
+      <div id="results" hidden>
+        <!-- Summary -->
+        <div class="summary-grid" id="summaryGrid"></div>
+
+        <!-- Filters -->
+        <div class="filter-bar">
+          <div class="type-pills" id="typePills"></div>
+          <input type="search" class="url-search" id="urlSearch" placeholder="Filter by URL…" autocomplete="off" />
+          <button class="filter-toggle" id="errorsToggle">Errors only</button>
+        </div>
+
+        <!-- Table header + legend -->
+        <div class="section-header">
+          <span id="countLabel">0 requests</span>
+          <div class="wf-legend">
+            <div class="legend-item"><div class="legend-swatch legend-conn"></div>connect</div>
+            <div class="legend-item"><div class="legend-swatch legend-wait"></div>wait</div>
+            <div class="legend-item"><div class="legend-swatch legend-recv"></div>receive</div>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table id="harTable">
+            <thead>
+              <tr>
+                <th class="col-method">Method</th>
+                <th class="col-url">URL</th>
+                <th class="col-status">Status</th>
+                <th class="col-type">Type</th>
+                <th class="col-size sortable" id="sortSize" data-sort="size">Size ↕</th>
+                <th class="col-time sortable" id="sortTime" data-sort="time">Time ↕</th>
+                <th class="col-waterfall">Waterfall</th>
+              </tr>
+            </thead>
+            <tbody id="harTbody"></tbody>
+          </table>
+        </div>
+
+        <div class="bottom-bar">
+          <div class="stats-line" id="statsLine"></div>
+          <button class="reset-btn" id="resetBtn">Load another file</button>
+        </div>
+      </div>
+    </main>
+
+    <footer>
+      <div class="kp-footer">
+        <span>© <span id="year"></span> kevin park</span>
+        <span class="pi">π</span>
+      </div>
+    </footer>
+
+  </div>
+
+  <script>
+    document.getElementById('year').textContent = new Date().getFullYear();
+
+    // ---- Theme toggle ----
+    const html = document.documentElement;
+    const themeBtn = document.getElementById('themeToggle');
+    const sunIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="4"/><path stroke-linecap="round" d="M12 3v1.5M12 19.5V21M3 12h1.5M19.5 12H21M5.6 5.6l1.06 1.06M17.34 17.34l1.06 1.06M5.6 18.4l1.06-1.06M17.34 6.66l1.06-1.06"/></svg>`;
+    const moonIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M21 12.79A9 9 0 1111.21 3a7 7 0 009.79 9.79z"/></svg>`;
+    let theme = localStorage.getItem('kp-theme') || 'light';
+    function applyTheme(t) { html.setAttribute('data-theme', t); themeBtn.innerHTML = t === 'dark' ? sunIcon : moonIcon; localStorage.setItem('kp-theme', t); }
+    applyTheme(theme);
+    themeBtn.addEventListener('click', () => { theme = theme === 'light' ? 'dark' : 'light'; applyTheme(theme); });
+
+    // ---- State ----
+    let allEntries = [];
+    let pageStart = 0;
+    let totalDuration = 0;
+    let sortBy = null;
+    let sortDir = 1;
+    let filterType = 'all';
+    let filterErrors = false;
+    let filterUrl = '';
+    let expandedIndex = null;
+    let harLog = null;
+
+    // ---- DOM refs ----
+    const dropZone    = document.getElementById('dropZone');
+    const fileInput   = document.getElementById('fileInput');
+    const resultsEl   = document.getElementById('results');
+    const summaryGrid = document.getElementById('summaryGrid');
+    const typePills   = document.getElementById('typePills');
+    const urlSearch   = document.getElementById('urlSearch');
+    const errorsToggle= document.getElementById('errorsToggle');
+    const countLabel  = document.getElementById('countLabel');
+    const harTbody    = document.getElementById('harTbody');
+    const statsLine   = document.getElementById('statsLine');
+    const resetBtn    = document.getElementById('resetBtn');
+    const errorBar    = document.getElementById('errorBar');
+    const errorMsg    = document.getElementById('errorMsg');
+    const sortSizeBtn = document.getElementById('sortSize');
+    const sortTimeBtn = document.getElementById('sortTime');
+
+    // ---- Utilities ----
+    function esc(s) {
+      return String(s)
+        .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+        .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    function formatSize(bytes) {
+      if (!bytes || bytes <= 0) return '—';
+      if (bytes < 1024) return bytes + ' B';
+      if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+      return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+    }
+
+    function formatTime(ms) {
+      if (ms == null || ms < 0) return '—';
+      if (ms < 1000) return Math.round(ms) + ' ms';
+      return (ms / 1000).toFixed(2) + ' s';
+    }
+
+    function getType(resourceType, mimeType) {
+      const rt = (resourceType || '').toLowerCase();
+      if (rt === 'xhr' || rt === 'fetch') return 'xhr';
+      if (rt === 'script') return 'js';
+      if (rt === 'stylesheet') return 'css';
+      if (rt === 'image') return 'img';
+      if (rt === 'font') return 'font';
+      if (rt === 'document') return 'doc';
+      if (rt === 'media') return 'media';
+      const mt = (mimeType || '').toLowerCase();
+      if (mt.includes('json') || mt.includes('xml') || mt.includes('graphql')) return 'xhr';
+      if (mt.includes('javascript')) return 'js';
+      if (mt.includes('css')) return 'css';
+      if (mt.startsWith('image/')) return 'img';
+      if (mt.includes('font') || mt.includes('woff')) return 'font';
+      if (mt.includes('html')) return 'doc';
+      if (mt.startsWith('video/') || mt.startsWith('audio/')) return 'media';
+      return 'other';
+    }
+
+    function getTimings(raw) {
+      const t = raw.timings || {};
+      return {
+        blocked: Math.max(0, t.blocked || 0),
+        dns:     Math.max(0, t.dns     || 0),
+        connect: Math.max(0, t.connect || 0),
+        ssl:     Math.max(0, t.ssl     || 0),
+        send:    Math.max(0, t.send    || 0),
+        wait:    Math.max(0, t.wait    || 0),
+        receive: Math.max(0, t.receive || 0),
+      };
+    }
+
+    // ---- Parse HAR ----
+    function parseHar(data) {
+      const log = data.log;
+      if (!log || !Array.isArray(log.entries)) throw new Error('Not a valid HAR file (missing log.entries)');
+
+      harLog = log;
+      const entries = log.entries;
+      if (!entries.length) throw new Error('HAR file contains no entries');
+
+      const startTimes = entries.map(e => new Date(e.startedDateTime).getTime());
+      pageStart = Math.min(...startTimes);
+
+      const endTimes = entries.map((e, i) => startTimes[i] + (e.time || 0));
+      totalDuration = Math.max(...endTimes) - pageStart || 1;
+
+      allEntries = entries.map((e, i) => {
+        const timings  = getTimings(e);
+        const response = e.response || {};
+        const content  = response.content || {};
+        const request  = e.request || {};
+
+        const transferSize = response._transferSize;
+        const bodySize     = response.bodySize;
+        const size = (transferSize != null && transferSize >= 0) ? transferSize
+                   : (bodySize >= 0 ? bodySize : 0);
+
+        return {
+          index:    i,
+          startMs:  startTimes[i] - pageStart,
+          totalTime: e.time || 0,
+          timings,
+          status:   response.status || 0,
+          type:     getType(e._resourceType, content.mimeType),
+          size,
+          url:      request.url || '',
+          method:   request.method || 'GET',
+          raw:      e,
+        };
+      });
+    }
+
+    // ---- Summary ----
+    function renderSummary() {
+      const total = allEntries.length;
+      const transferred = allEntries.reduce((s, e) => s + e.size, 0);
+      const errors = allEntries.filter(e => e.status >= 400).length;
+
+      let loadTime = null;
+      if (harLog.pages && harLog.pages[0] && harLog.pages[0].pageTimings) {
+        const pt = harLog.pages[0].pageTimings;
+        loadTime = pt.onLoad > 0 ? pt.onLoad : (pt.onContentLoad > 0 ? pt.onContentLoad : null);
+      }
+      if (!loadTime) loadTime = totalDuration;
+
+      summaryGrid.innerHTML = [
+        { value: total.toLocaleString(),        label: 'requests',  cls: '' },
+        { value: formatSize(transferred),       label: 'transferred', cls: '' },
+        { value: formatTime(loadTime),          label: 'load time', cls: '' },
+        { value: errors.toLocaleString(),       label: 'errors',    cls: errors > 0 ? 'has-errors' : '' },
+      ].map(c => `
+        <div class="summary-card">
+          <div class="summary-value ${c.cls}">${esc(c.value)}</div>
+          <div class="summary-label">${c.label}</div>
+        </div>
+      `).join('');
+    }
+
+    // ---- Type pills ----
+    function renderTypePills() {
+      const typesPresent = new Set(allEntries.map(e => e.type));
+      const order = ['all', 'doc', 'xhr', 'js', 'css', 'img', 'font', 'media', 'other'];
+      const labels = { all: 'All', doc: 'Doc', xhr: 'XHR', js: 'JS', css: 'CSS', img: 'Img', font: 'Font', media: 'Media', other: 'Other' };
+      const visible = order.filter(t => t === 'all' || typesPresent.has(t));
+
+      typePills.innerHTML = visible.map(t =>
+        `<button class="type-pill${filterType === t ? ' active' : ''}" data-type="${t}">${labels[t]}</button>`
+      ).join('');
+
+      typePills.querySelectorAll('.type-pill').forEach(btn => {
+        btn.addEventListener('click', () => {
+          filterType = btn.dataset.type;
+          typePills.querySelectorAll('.type-pill').forEach(b => b.classList.toggle('active', b.dataset.type === filterType));
+          renderTable();
+        });
+      });
+    }
+
+    // ---- Waterfall bar ----
+    function waterfallHtml(entry) {
+      const D = totalDuration;
+      const pct = v => Math.max(0, v / D * 100).toFixed(3) + '%';
+      const { blocked, dns, connect, ssl, send, wait, receive } = entry.timings;
+      const connTime = blocked + dns + connect + ssl + send;
+      return `<div class="wf-track">
+        <div class="wf-offset" style="width:${pct(entry.startMs)}"></div>
+        <div class="wf-conn"   style="width:${pct(connTime)}"></div>
+        <div class="wf-wait"   style="width:${pct(wait)}"></div>
+        <div class="wf-recv"   style="width:${pct(receive)}"></div>
+      </div>`;
+    }
+
+    // ---- Detail panel ----
+    function detailHtml(entry) {
+      const e = entry.raw;
+      const t = entry.timings;
+      const phases = [
+        ['Blocked',    t.blocked],
+        ['DNS',        t.dns],
+        ['Connect',    t.connect],
+        ['SSL/TLS',    t.ssl],
+        ['Send',       t.send],
+        ['Wait (TTFB)',t.wait],
+        ['Receive',    t.receive],
+      ].filter(([, v]) => v > 0);
+
+      const timingRows = phases.map(([name, val]) => {
+        const pct = (val / entry.totalTime * 100).toFixed(1);
+        return `<div class="timing-row">
+          <span class="timing-name">${esc(name)}</span>
+          <div class="timing-bar-wrap"><div class="timing-bar" style="width:${pct}%"></div></div>
+          <span class="timing-val">${formatTime(val)}</span>
+        </div>`;
+      }).join('') + `<div class="timing-row timing-total">
+        <span class="timing-name">Total</span>
+        <div class="timing-bar-wrap"></div>
+        <span class="timing-val">${formatTime(entry.totalTime)}</span>
+      </div>`;
+
+      const renderHeaders = headers => (headers && headers.length)
+        ? headers.map(h => `<div class="header-row"><span class="header-name">${esc(h.name)}</span><span class="header-value">${esc(h.value)}</span></div>`).join('')
+        : '<span class="detail-empty">none</span>';
+
+      const reqHeaders = renderHeaders((e.request || {}).headers);
+      const resHeaders = renderHeaders((e.response || {}).headers);
+
+      return `<tr class="detail-row" data-for="${entry.index}">
+        <td colspan="7">
+          <div class="detail-panel">
+            <div>
+              <div class="detail-label">timings</div>
+              <div class="timing-rows">${timingRows}</div>
+            </div>
+            <div class="detail-cols">
+              <div>
+                <div class="detail-label">request headers</div>
+                <div class="headers-list">${reqHeaders}</div>
+              </div>
+              <div>
+                <div class="detail-label">response headers</div>
+                <div class="headers-list">${resHeaders}</div>
+              </div>
+            </div>
+          </div>
+        </td>
+      </tr>`;
+    }
+
+    // ---- Render table ----
+    function renderTable() {
+      let entries = allEntries.slice();
+
+      if (filterType !== 'all') entries = entries.filter(e => e.type === filterType);
+      if (filterErrors)         entries = entries.filter(e => e.status >= 400);
+      if (filterUrl.trim())     entries = entries.filter(e => e.url.toLowerCase().includes(filterUrl.toLowerCase()));
+
+      if (sortBy === 'size') entries.sort((a, b) => sortDir * (a.size - b.size));
+      if (sortBy === 'time') entries.sort((a, b) => sortDir * (a.totalTime - b.totalTime));
+
+      const n = entries.length;
+      countLabel.textContent = `${n.toLocaleString()} request${n !== 1 ? 's' : ''}`;
+
+      if (!n) {
+        harTbody.innerHTML = `<tr><td colspan="7"><div class="empty-state">No requests match the current filter.</div></td></tr>`;
+        updateStatsLine(entries);
+        return;
+      }
+
+      let html = '';
+      for (const entry of entries) {
+        let displayPath = entry.url, host = '';
+        try {
+          const u = new URL(entry.url);
+          host = u.hostname;
+          displayPath = u.pathname + u.search;
+          if (displayPath === '/') displayPath = u.pathname;
+        } catch {}
+
+        const statusCls = entry.status >= 400 ? ' status-error' : '';
+
+        html += `<tr class="entry-row${expandedIndex === entry.index ? ' expanded' : ''}" data-index="${entry.index}">
+          <td class="col-method"><span class="method-badge">${esc(entry.method)}</span></td>
+          <td class="col-url" title="${esc(entry.url)}">
+            <span class="url-text">${esc(displayPath)}</span>
+            <span class="url-host">${esc(host)}</span>
+          </td>
+          <td class="col-status${statusCls}">${entry.status || '—'}</td>
+          <td class="col-type"><span class="type-badge">${esc(entry.type)}</span></td>
+          <td class="col-size">${esc(formatSize(entry.size))}</td>
+          <td class="col-time">${esc(formatTime(entry.totalTime))}</td>
+          <td class="col-waterfall">${waterfallHtml(entry)}</td>
+        </tr>`;
+
+        if (expandedIndex === entry.index) {
+          html += detailHtml(entry);
+        }
+      }
+
+      harTbody.innerHTML = html;
+
+      harTbody.querySelectorAll('.entry-row').forEach(row => {
+        row.addEventListener('click', () => {
+          const idx = Number(row.dataset.index);
+          expandedIndex = expandedIndex === idx ? null : idx;
+          renderTable();
+        });
+      });
+
+      updateStatsLine(entries);
+    }
+
+    function updateStatsLine(entries) {
+      const totalTime = entries.reduce((s, e) => s + e.totalTime, 0);
+      const totalSize = entries.reduce((s, e) => s + e.size, 0);
+      statsLine.innerHTML = [
+        `<span>${entries.length.toLocaleString()} shown</span>`,
+        `<span>${esc(formatSize(totalSize))} total</span>`,
+        `<span>${esc(formatTime(totalTime))} combined</span>`,
+      ].join('<span>·</span>');
+    }
+
+    // ---- Sort headers ----
+    function setupSort() {
+      [sortSizeBtn, sortTimeBtn].forEach(btn => {
+        btn.addEventListener('click', () => {
+          const key = btn.dataset.sort;
+          if (sortBy === key) {
+            sortDir = -sortDir;
+          } else {
+            sortBy = key; sortDir = 1;
+          }
+          [sortSizeBtn, sortTimeBtn].forEach(b => {
+            b.classList.toggle('sort-active', b.dataset.sort === sortBy);
+            if (b.dataset.sort === sortBy) {
+              b.textContent = (key === 'size' ? 'Size ' : 'Time ') + (sortDir === 1 ? '↑' : '↓');
+            } else {
+              b.textContent = (b.dataset.sort === 'size' ? 'Size ↕' : 'Time ↕');
+            }
+          });
+          renderTable();
+        });
+      });
+    }
+
+    // ---- File loading ----
+    function loadText(text) {
+      errorBar.classList.remove('visible');
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch {
+        showError('Could not parse file — is it valid JSON?');
+        return;
+      }
+      try {
+        parseHar(data);
+      } catch (e) {
+        showError(e.message);
+        return;
+      }
+
+      dropZone.hidden = true;
+      resultsEl.hidden = false;
+
+      renderSummary();
+      renderTypePills();
+      setupSort();
+      renderTable();
+    }
+
+    function showError(msg) {
+      errorMsg.textContent = msg;
+      errorBar.classList.add('visible');
+    }
+
+    // ---- Drop zone ----
+    dropZone.addEventListener('click', () => fileInput.click());
+    dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragging'); });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragging'));
+    dropZone.addEventListener('drop', e => {
+      e.preventDefault();
+      dropZone.classList.remove('dragging');
+      const file = e.dataTransfer.files[0];
+      if (!file) return;
+      readFile(file);
+    });
+    fileInput.addEventListener('change', () => {
+      if (fileInput.files[0]) readFile(fileInput.files[0]);
+    });
+
+    function readFile(file) {
+      const reader = new FileReader();
+      reader.onload = ev => loadText(ev.target.result);
+      reader.onerror = () => showError('Could not read the file.');
+      reader.readAsText(file);
+    }
+
+    // ---- Filters ----
+    urlSearch.addEventListener('input', () => { filterUrl = urlSearch.value; renderTable(); });
+    errorsToggle.addEventListener('click', () => {
+      filterErrors = !filterErrors;
+      errorsToggle.classList.toggle('active', filterErrors);
+      renderTable();
+    });
+
+    // ---- Reset ----
+    resetBtn.addEventListener('click', () => {
+      allEntries = []; harLog = null;
+      sortBy = null; sortDir = 1;
+      filterType = 'all'; filterErrors = false; filterUrl = '';
+      expandedIndex = null;
+      urlSearch.value = '';
+      errorsToggle.classList.remove('active');
+      [sortSizeBtn, sortTimeBtn].forEach(b => { b.classList.remove('sort-active'); });
+      sortSizeBtn.textContent = 'Size ↕';
+      sortTimeBtn.textContent = 'Time ↕';
+      resultsEl.hidden = true;
+      dropZone.hidden = false;
+      fileInput.value = '';
+      errorBar.classList.remove('visible');
+    });
+  </script>
+</body>
+</html>
