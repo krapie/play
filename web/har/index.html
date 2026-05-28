@@ -351,8 +351,7 @@
       background: var(--kp-hover-bg);
       display: flex; flex-direction: column; gap: var(--kp-space-5);
     }
-    .detail-cols { display: grid; grid-template-columns: 1fr 1fr; gap: var(--kp-space-5); }
-    @media (max-width: 700px) { .detail-cols { grid-template-columns: 1fr; } }
+    .detail-cols { display: flex; flex-direction: column; gap: var(--kp-space-5); }
 
     .detail-label {
       font-family: var(--kp-font-mono);
