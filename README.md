@@ -13,6 +13,7 @@ Interactive sandbox experiments — small, self-contained tools I built for no p
 | **Pick** | Add options, let randomness decide |
 | **The Button** | One button. Everyone presses it. |
 | **Hash Generator** | MD5, SHA-1, SHA-256, SHA-512 — all client-side |
+| **Network Topologies** | Clos fat-tree vs RNG flat — interactive comparison of how AWS redesigned its data center fabric |
 | **Tracer** | Visualize the network path to any host, hop by hop on a map |
 
 ## Stack
@@ -36,6 +37,7 @@ play/
 │   ├── button/             # The Button
 │   ├── hash/               # Hash Generator
 │   ├── latency/            # AWS Latency
+│   ├── network/            # Network Topologies
 │   ├── pick/               # Pick
 │   ├── reaction/           # Reaction Time
 │   └── tracer/             # Tracer
