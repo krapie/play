@@ -47,4 +47,7 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add k8s/play/deployment.yaml
           git commit -m "deploy: play ${{ env.IMAGE_TAG }}"
-          git push
+          for i in 1 2 3 4 5; do
+            git pull --rebase && git push && break
+            sleep $((RANDOM % 5 + 2))
+          done
