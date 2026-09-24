@@ -1,5 +1,4 @@
-FROM nginx:1.27-alpine
-COPY web/ /usr/share/nginx/html/
-COPY nginx.conf /etc/nginx/conf.d/default.conf
-EXPOSE 80
-CMD ["nginx", "-g", "daemon off;"]
+# Artifact image: static files only. Served by the shared nginx in
+# krapie/homeserver k8s/web, whose init container copies /site into it.
+FROM busybox:1.37
+COPY web/ /site/

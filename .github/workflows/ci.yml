@@ -38,14 +38,14 @@ jobs:
       - name: Update image tag in deployment manifest
         run: |
           sed -i "s|krapi0314/play:.*|krapi0314/play:${{ env.IMAGE_TAG }}|" \
-            homeserver/k8s/play/deployment.yaml
+            homeserver/k8s/web/deployment.yaml
 
       - name: Commit and push manifest update
         run: |
           cd homeserver
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add k8s/play/deployment.yaml
+          git add k8s/web/deployment.yaml
           git commit -m "deploy: play ${{ env.IMAGE_TAG }}"
           for i in 1 2 3 4 5; do
             git pull --rebase && git push && break

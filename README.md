@@ -5,8 +5,14 @@ Interactive sandbox experiments — small, self-contained tools built for fun an
 ## Getting Started
 
 ```bash
+python3 -m http.server -d web 8080   # http://localhost:8080
+```
+
+The Docker image is a files-only artifact (`/site`) served by the shared nginx
+in `krapie/homeserver` `k8s/web`:
+
+```bash
 docker build -t play .
-docker run -p 8080:80 play   # http://localhost:8080
 ```
 
 ## Experiments
