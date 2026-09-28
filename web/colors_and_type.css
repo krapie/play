@@ -124,9 +124,10 @@
   --kp-dur-slow:   280ms;
 
   /* ----- Layout ----- */
-  --kp-content-width: 720px;
-  --kp-wide-width:    960px;
-  --kp-page-pad:      24px;
+  --kp-content-width: 1280px;
+  --kp-prose-width:   680px;
+  --kp-wide-width:    1440px;
+  --kp-page-pad:      clamp(16px, 2.5vw, 32px);
 }
 
 /* ===== Dark mode (opt-in via [data-theme="dark"] OR system preference) ===== */
