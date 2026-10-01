@@ -302,7 +302,7 @@
 
     <div class="status-badge" id="statusBadge">
       <div class="status-dot" id="statusDot"></div>
-      <span id="statusText">ready</span>
+      <span id="statusText">Ready</span>
     </div>
 
     <a href="/" class="nav-link">Play</a>
@@ -316,10 +316,10 @@
 
   <div class="hop-panel">
     <div class="hop-panel-header">
-      <span>#</span><span>ip</span><span style="text-align:right">rtt</span><span>location</span>
+      <span>#</span><span>IP</span><span style="text-align:right">RTT</span><span>Location</span>
     </div>
     <div class="hop-list" id="hopList">
-      <div class="hop-empty" id="hopEmpty">enter a target and press run</div>
+      <div class="hop-empty" id="hopEmpty">Enter a target and press Run</div>
     </div>
   </div>
 
@@ -639,7 +639,7 @@
 
     function stopTrace() {
       if (evtSource) { evtSource.close(); evtSource = null; }
-      setStatus('idle', 'stopped');
+      setStatus('idle', 'Stopped');
       runBtn.disabled = false;
       runBtn.textContent = 'Run';
     }
@@ -650,7 +650,7 @@
 
       if (evtSource) { evtSource.close(); evtSource = null; }
       clearTrace();
-      setStatus('running', `tracing ${target}`);
+      setStatus('running', `Tracing ${target}`);
 
       // Change run button to stop
       runBtn.textContent = 'Stop';
@@ -665,19 +665,19 @@
         hopCount++;
         addHopRow(hop);
         if (hop.lat && hop.lon) addMarker(hop);
-        statusText.textContent = `hop ${hop.hop}…`;
+        statusText.textContent = `Hop ${hop.hop}…`;
       };
 
       evtSource.addEventListener('done', () => {
         evtSource.close(); evtSource = null;
-        setStatus('idle', `done — ${hopCount} hops`);
+        setStatus('idle', `Done — ${hopCount} hops`);
         runBtn.textContent = 'Run';
         runBtn.onclick = startTrace;
       });
 
       evtSource.addEventListener('error', (e) => {
         evtSource.close(); evtSource = null;
-        setStatus('idle', 'error');
+        setStatus('idle', 'Error');
         runBtn.textContent = 'Run';
         runBtn.onclick = startTrace;
       });
@@ -685,7 +685,7 @@
       evtSource.onerror = () => {
         if (!evtSource) return;
         evtSource.close(); evtSource = null;
-        setStatus('idle', `done — ${hopCount} hops`);
+        setStatus('idle', `Done — ${hopCount} hops`);
         runBtn.textContent = 'Run';
         runBtn.onclick = startTrace;
       };

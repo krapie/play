@@ -221,7 +221,7 @@
   <div class="overlay-bottom">
     <div class="map-badge" id="mapBadge">
       <div class="pulse" id="pulse"></div>
-      <span id="badgeText">loading map…</span>
+      <span id="badgeText">Loading map…</span>
     </div>
     <div class="legend">
       <div class="legend-item"><div class="legend-pip" style="background:#4ade80"></div>&lt;30ms</div>
@@ -428,7 +428,7 @@ function markTimeout(region) {
   dot.setAttribute('fill', 'var(--kp-fg-3)');
   dot.setAttribute('r', 3.5);
   const lbl = labelEls[region.id];
-  lbl.textContent = 'n/a';
+  lbl.textContent = 'N/A';
   lbl.setAttribute('fill', 'var(--kp-fg-3)');
   lbl.setAttribute('visibility', 'visible');
 }
@@ -439,7 +439,7 @@ const latencyData = {};
 
 function showTip(e, r) {
   const ms = latencyData[r.id];
-  const msStr = ms != null ? `${ms}ms` : (r.id in latencyData ? 'n/a' : '…');
+  const msStr = ms != null ? `${ms}ms` : (r.id in latencyData ? 'N/A' : '…');
   tip.textContent = `${r.name}  ·  ${r.id}  ·  ${msStr}`;
   tip.classList.add('on');
   posTip(e);
@@ -545,7 +545,7 @@ async function runTests() {
 
 // ── Init ───────────────────────────────────────────────────────────────────
 async function init() {
-  badgeText.textContent = 'loading map…';
+  badgeText.textContent = 'Loading map…';
   await loadMap();
 
   window.addEventListener('resize', () => {
@@ -556,7 +556,7 @@ async function init() {
     }
   });
 
-  badgeText.textContent = 'locating…';
+  badgeText.textContent = 'Locating…';
   userPos = await getLocation();
   rebuildSvgElements();
   await runTests();

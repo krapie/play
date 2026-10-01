@@ -228,25 +228,25 @@
     <a href="/" class="back" id="backLink">← play</a>
 
     <div class="center">
-      <div class="state-label" id="stateLabel">reaction time</div>
+      <div class="state-label" id="stateLabel">Reaction time</div>
       <div class="number-wrap">
         <div class="big-number" id="bigNumber">--</div>
       </div>
       <div class="unit" id="unit"></div>
-      <div class="hint" id="hint">click anywhere to begin</div>
+      <div class="hint" id="hint">Click anywhere to begin</div>
     </div>
 
     <div class="bottom">
       <svg id="sparkline" width="76" height="40" viewBox="0 0 76 40" aria-hidden="true"></svg>
       <div class="stats-row">
-        <div class="stat"><div class="stat-label">last</div><div class="stat-val" id="statLast">--</div></div>
-        <div class="stat"><div class="stat-label">best</div><div class="stat-val" id="statBest">--</div></div>
-        <div class="stat"><div class="stat-label">avg</div><div class="stat-val" id="statAvg">--</div></div>
+        <div class="stat"><div class="stat-label">Last</div><div class="stat-val" id="statLast">--</div></div>
+        <div class="stat"><div class="stat-label">Best</div><div class="stat-val" id="statBest">--</div></div>
+        <div class="stat"><div class="stat-label">Avg</div><div class="stat-val" id="statAvg">--</div></div>
       </div>
     </div>
 
     <div class="leaderboard" id="leaderboard">
-      <div class="lb-title">global top 10</div>
+      <div class="lb-title">Global top 10</div>
       <div id="lbRows"></div>
       <div class="lb-status" id="lbStatus"></div>
     </div>
@@ -298,34 +298,34 @@
 
       switch (state) {
         case 'idle':
-          stateLabel.textContent = 'reaction time';
+          stateLabel.textContent = 'Reaction time';
           bigNumber.textContent  = last != null ? last : '--';
           unit.textContent       = last != null ? 'ms' : '';
-          hint.textContent       = 'click anywhere to begin';
+          hint.textContent       = 'Click anywhere to begin';
           break;
         case 'waiting':
-          stateLabel.textContent = 'wait...';
+          stateLabel.textContent = 'Wait...';
           bigNumber.textContent  = '';
           unit.textContent       = '';
           hint.textContent       = '';
           break;
         case 'go':
-          stateLabel.textContent = 'now';
+          stateLabel.textContent = 'Now';
           bigNumber.textContent  = '';
           unit.textContent       = '';
           hint.textContent       = '';
           break;
         case 'result':
-          stateLabel.textContent = 'reaction time';
+          stateLabel.textContent = 'Reaction time';
           bigNumber.textContent  = last;
           unit.textContent       = 'ms';
-          hint.textContent       = 'click to go again';
+          hint.textContent       = 'Click to go again';
           break;
         case 'too-soon':
-          stateLabel.textContent = 'too soon';
+          stateLabel.textContent = 'Too soon';
           bigNumber.textContent  = '×';
           unit.textContent       = '';
-          hint.textContent       = 'click to retry';
+          hint.textContent       = 'Click to retry';
           break;
       }
 
@@ -377,14 +377,14 @@
     }
 
     async function loadLeaderboard() {
-      lbStatus.textContent = 'loading...';
+      lbStatus.textContent = 'Loading...';
       lbRows.innerHTML = '';
       try {
         const res = await fetch(`${API}/api/results/reaction/leaderboard`);
         const { leaderboard } = await res.json();
 
         if (!leaderboard.length) {
-          lbStatus.textContent = 'no entries yet';
+          lbStatus.textContent = 'No entries yet';
           return;
         }
 
@@ -408,7 +408,7 @@
           lbStatus.textContent = '';
         }
       } catch (_) {
-        lbStatus.textContent = 'could not load';
+        lbStatus.textContent = 'Could not load';
       }
     }
 

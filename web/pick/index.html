@@ -334,7 +334,7 @@
             type="text"
             id="itemInput"
             class="item-input"
-            placeholder="add an option…"
+            placeholder="Add an option…"
             autocomplete="off"
             maxlength="80"
           />
@@ -344,16 +344,16 @@
         <div class="presets" id="presets">
           <button class="preset-btn" data-items="한식,중식,양식">한식 · 중식 · 양식</button>
           <button class="preset-btn" data-items="가위,바위,보">가위 · 바위 · 보</button>
-          <button class="preset-btn" data-items="yes,no">yes · no</button>
-          <button class="preset-btn" data-items="coffee,tea">coffee · tea</button>
+          <button class="preset-btn" data-items="Yes,No">Yes · No</button>
+          <button class="preset-btn" data-items="Coffee,Tea">Coffee · Tea</button>
         </div>
 
         <ul class="item-list" id="itemList"></ul>
 
-        <button class="pick-btn" id="pickBtn" disabled>pick</button>
+        <button class="pick-btn" id="pickBtn" disabled>Pick</button>
 
         <div class="result-area" id="resultArea" style="display:none">
-          <div class="result-label">selected</div>
+          <div class="result-label">Selected</div>
           <div class="result-text" id="resultText"></div>
         </div>
 
@@ -424,7 +424,7 @@
     function render() {
       const list = document.getElementById('itemList');
       if (!items.length) {
-        list.innerHTML = '<li class="empty-state">no options yet</li>';
+        list.innerHTML = '<li class="empty-state">No options yet</li>';
       } else {
         list.innerHTML = items.map((item, i) => `
           <li class="item-row" id="item-${i}">
