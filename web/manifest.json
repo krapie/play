@@ -1,6 +1,6 @@
 {
-  "name": "play — kevinprk",
-  "short_name": "play",
+  "name": "Play — kevinprk",
+  "short_name": "Play",
   "description": "Small interactive experiments by Kevin Park.",
   "start_url": "/",
   "display": "standalone",

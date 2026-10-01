@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Tracer — play</title>
+  <title>Tracer — Play</title>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   <link rel="stylesheet" href="/colors_and_type.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -12,12 +12,12 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Tracer" />
-  <meta property="og:title" content="Tracer — play" />
+  <meta property="og:title" content="Tracer — Play" />
   <meta property="og:description" content="Visualise a traceroute on a live map." />
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://play.kevinprk.com/tracer/" />
   <meta name="twitter:card" content="summary" />
-  <meta name="twitter:title" content="Tracer — play" />
+  <meta name="twitter:title" content="Tracer — Play" />
   <meta name="twitter:description" content="Visualise a traceroute on a live map." />
   <script defer src="https://analytics.kevinprk.com/script.js" data-website-id="7ef222d4-ecb2-4902-80d9-34dbb33de61c"></script>
   <style>
@@ -296,7 +296,7 @@
       autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
 
     <button class="run-btn" id="runBtn">Run</button>
-    <button class="cable-btn" id="cableBtn">cables</button>
+    <button class="cable-btn" id="cableBtn">Cables</button>
 
     <div class="spacer"></div>
 
@@ -305,7 +305,7 @@
       <span id="statusText">ready</span>
     </div>
 
-    <a href="/" class="nav-link">play</a>
+    <a href="/" class="nav-link">Play</a>
 
     <button class="theme-toggle" id="themeToggle" aria-label="toggle theme">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
@@ -560,7 +560,7 @@
     async function loadCables() {
       if (cablesLoading) return;
       cablesLoading = true;
-      cableBtn.textContent = 'loading…';
+      cableBtn.textContent = 'Loading…';
       cableBtn.disabled = true;
       try {
         const res  = await fetch(CABLE_URL);
@@ -585,7 +585,7 @@
       } finally {
         cablesLoading = false;
         cableBtn.disabled = false;
-        cableBtn.textContent = 'cables';
+        cableBtn.textContent = 'Cables';
         cableBtn.classList.toggle('active', cableVisible);
       }
     }
@@ -631,7 +631,7 @@
       statusDot.className = 'status-dot' + (s === 'running' ? ' running' : '');
       statusText.textContent = text;
       runBtn.disabled = s === 'running';
-      runBtn.textContent = s === 'running' ? 'stop' : 'run';
+      runBtn.textContent = s === 'running' ? 'Stop' : 'Run';
     }
 
     // ── Run / Stop ─────────────────────────────────────────────────
@@ -641,7 +641,7 @@
       if (evtSource) { evtSource.close(); evtSource = null; }
       setStatus('idle', 'stopped');
       runBtn.disabled = false;
-      runBtn.textContent = 'run';
+      runBtn.textContent = 'Run';
     }
 
     function startTrace() {
@@ -653,7 +653,7 @@
       setStatus('running', `tracing ${target}`);
 
       // Change run button to stop
-      runBtn.textContent = 'stop';
+      runBtn.textContent = 'Stop';
       runBtn.disabled = false;
       runBtn.onclick = stopTrace;
 
@@ -671,14 +671,14 @@
       evtSource.addEventListener('done', () => {
         evtSource.close(); evtSource = null;
         setStatus('idle', `done — ${hopCount} hops`);
-        runBtn.textContent = 'run';
+        runBtn.textContent = 'Run';
         runBtn.onclick = startTrace;
       });
 
       evtSource.addEventListener('error', (e) => {
         evtSource.close(); evtSource = null;
         setStatus('idle', 'error');
-        runBtn.textContent = 'run';
+        runBtn.textContent = 'Run';
         runBtn.onclick = startTrace;
       });
 
@@ -686,7 +686,7 @@
         if (!evtSource) return;
         evtSource.close(); evtSource = null;
         setStatus('idle', `done — ${hopCount} hops`);
-        runBtn.textContent = 'run';
+        runBtn.textContent = 'Run';
         runBtn.onclick = startTrace;
       };
     }
