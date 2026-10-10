@@ -60,8 +60,7 @@ func (h *Handler) Tracer(w http.ResponseWriter, r *http.Request) {
 
 	geoClient := &http.Client{Timeout: 3 * time.Second}
 
-	// The trace starts here: private hops (pod gateway, home router) have no
-	// geolocation, so the client pins them to the server's public location.
+	// The trace starts at the server's public location (private hops are dropped).
 	if o := serverOrigin(geoClient); o != nil {
 		data, _ := json.Marshal(hopEvent{IP: o.Query, City: o.City, Country: o.CountryCode, Lat: o.Lat, Lon: o.Lon, AS: o.AS})
 		fmt.Fprintf(w, "event: origin\ndata: %s\n\n", data)
@@ -108,18 +107,21 @@ func (h *Handler) Tracer(w http.ResponseWriter, r *http.Request) {
 		if m[2] == "*" {
 			hop.Timeout = true
 		} else {
+			// Private hops (pod gateway, home router, CGNAT) can't be placed on
+			// the map and only expose internal topology, so they are not sent.
+			if isPrivate(m[2]) {
+				continue
+			}
 			hop.IP = m[2]
 			if len(m) > 3 && m[3] != "" {
 				hop.RTT = m[3]
 			}
-			if !isPrivate(hop.IP) {
-				if geo := geoLookup(geoClient, hop.IP); geo != nil {
-					hop.City = geo.City
-					hop.Country = geo.CountryCode
-					hop.Lat = geo.Lat
-					hop.Lon = geo.Lon
-					hop.AS = geo.AS
-				}
+			if geo := geoLookup(geoClient, hop.IP); geo != nil {
+				hop.City = geo.City
+				hop.Country = geo.CountryCode
+				hop.Lat = geo.Lat
+				hop.Lon = geo.Lon
+				hop.AS = geo.AS
 			}
 		}
 
@@ -166,7 +168,7 @@ var privateNets []*net.IPNet
 
 func init() {
 	for _, cidr := range []string{
-		"10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16",
+		"10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "100.64.0.0/10",
 		"127.0.0.0/8", "169.254.0.0/16", "::1/128", "fc00::/7",
 	} {
 		_, block, _ := net.ParseCIDR(cidr)
