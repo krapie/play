@@ -23,4 +23,4 @@ docker build -t play .
 - **The Button** — a single shared button; every visitor can press it and see the global count go up
 - **Hash Generator** — MD5, SHA-1, SHA-256, and SHA-512 hashing, all computed client-side with no data sent anywhere
 - **Network Topologies** — interactive visual comparison of Clos fat-tree vs. RNG flat topology used in AWS data center fabric design
-- **Tracer** — enter any hostname and visualize the network path hop by hop on a globe (MapLibre GL + OpenFreeMap vector tiles, no API key)
+- **Tracer** — enter any hostname and visualize the network path hop by hop on a globe (MapLibre GL + OpenFreeMap vector tiles, no API key); the trace starts at the server's location (π), private hops are pinned there, and clicking a hop focuses it on the map

@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -31,6 +32,7 @@ type hopEvent struct {
 
 type ipAPIResp struct {
 	Status      string  `json:"status"`
+	Query       string  `json:"query"`
 	City        string  `json:"city"`
 	CountryCode string  `json:"countryCode"`
 	Lat         float64 `json:"lat"`
@@ -56,6 +58,16 @@ func (h *Handler) Tracer(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Connection", "keep-alive")
 	w.Header().Set("X-Accel-Buffering", "no")
 
+	geoClient := &http.Client{Timeout: 3 * time.Second}
+
+	// The trace starts here: private hops (pod gateway, home router) have no
+	// geolocation, so the client pins them to the server's public location.
+	if o := serverOrigin(geoClient); o != nil {
+		data, _ := json.Marshal(hopEvent{IP: o.Query, City: o.City, Country: o.CountryCode, Lat: o.Lat, Lon: o.Lon, AS: o.AS})
+		fmt.Fprintf(w, "event: origin\ndata: %s\n\n", data)
+		flusher.Flush()
+	}
+
 	ctx := r.Context()
 	cmd := exec.CommandContext(ctx, "traceroute", "-4", "-n", "-q", "1", "-w", "2", "-m", "30", target)
 	stdout, err := cmd.StdoutPipe()
@@ -70,7 +82,6 @@ func (h *Handler) Tracer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	geoClient := &http.Client{Timeout: 3 * time.Second}
 	scanner := bufio.NewScanner(stdout)
 
 	for scanner.Scan() {
@@ -122,8 +133,24 @@ func (h *Handler) Tracer(w http.ResponseWriter, r *http.Request) {
 	flusher.Flush()
 }
 
+var (
+	originMu sync.Mutex
+	origin   *ipAPIResp
+)
+
+// serverOrigin geolocates this server's public IP once (ip-api with no IP
+// answers for the caller) and caches it; a failed lookup is retried next time.
+func serverOrigin(client *http.Client) *ipAPIResp {
+	originMu.Lock()
+	defer originMu.Unlock()
+	if origin == nil {
+		origin = geoLookup(client, "")
+	}
+	return origin
+}
+
 func geoLookup(client *http.Client, ip string) *ipAPIResp {
-	resp, err := client.Get("http://ip-api.com/json/" + ip + "?fields=status,city,countryCode,lat,lon,as")
+	resp, err := client.Get("http://ip-api.com/json/" + ip + "?fields=status,query,city,countryCode,lat,lon,as")
 	if err != nil {
 		return nil
 	}

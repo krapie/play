@@ -73,6 +73,17 @@
       box-shadow: 0 1px 4px rgba(0,0,0,0.35);
       line-height: 1;
     }
+    .hop-marker.origin {
+      border-radius: var(--kp-radius-sm);
+      font-family: var(--kp-font-sans);
+      font-size: 12px;
+      font-weight: 500;
+    }
+    .hop-marker.focused {
+      outline: 2px solid var(--kp-fg);
+      outline-offset: 2px;
+    }
+
     .hop-popup .maplibregl-popup-content {
       font-family: var(--kp-font-mono);
       font-size: 11px;
@@ -422,7 +433,9 @@
     let segments      = []; // GeoJSON LineString per hop-to-hop arc
     let hopPoints     = []; // [lat, normLon] per geolocated hop, for fitBounds
     let markers       = [];
-    let markersByHop  = new Map();
+    let markersByHop  = new Map(); // hop number → { marker, hop }; local hops share the origin marker
+    let originHop     = null;
+    let focusedHop    = null;
     let cableData     = null;
     let cableVisible  = true;
 
@@ -434,6 +447,13 @@
       map.getSource('trace')?.setData(traceData());
     }
 
+    const hoverPopup = new maplibregl.Popup({ closeButton: false, closeOnClick: false, className: 'hop-popup', offset: 14 });
+    const focusPopup = new maplibregl.Popup({ closeButton: false, closeOnClick: false, className: 'hop-popup', offset: 14 });
+
+    // RFC 1918, loopback, link-local and CGNAT: no geolocation, so these hops
+    // (pod gateway, home router, ISP CGNAT) are pinned to the origin.
+    const PRIVATE_IP = /^(10\.|127\.|169\.254\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\.)/;
+
     applyTheme(theme);
     themeBtn.addEventListener('click', () => { theme = theme === 'light' ? 'dark' : 'light'; applyTheme(theme); });
 
@@ -442,6 +462,10 @@
       markers.forEach(m => m.remove());
       markers = [];
       markersByHop.clear();
+      originHop = null;
+      focusedHop = null;
+      hoverPopup.remove();
+      focusPopup.remove();
       segments = [];
       refreshTrace();
       const hopList  = document.getElementById('hopList');
@@ -458,6 +482,24 @@
         row.classList.add('active');
         row.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
       }
+    }
+
+    // Fly to a hop's marker, ring it and pin its tooltip open.
+    function focusHop(hopNum) {
+      const entry = markersByHop.get(hopNum);
+      if (!entry) return;
+      setActive(hopNum);
+      document.querySelector('.hop-marker.focused')?.classList.remove('focused');
+      entry.marker.getElement().classList.add('focused');
+      focusedHop = hopNum;
+      hoverPopup.remove();
+      focusPopup.setLngLat(entry.marker.getLngLat()).setText(hopTooltip(entry.hop)).addTo(map);
+      map.flyTo({
+        center: entry.marker.getLngLat(),
+        zoom: Math.max(map.getZoom(), 6),
+        padding: { left: window.innerWidth > 600 ? 260 : 0 }, // hop panel is hidden on mobile
+        duration: 1000,
+      });
     }
 
     function fitView() {
@@ -503,10 +545,10 @@
     }
 
     function hopTooltip(h) {
-      const locStr = [h.city, h.country].filter(Boolean).join(', ') || '';
+      const locStr = h.local ? 'Local' : [h.city, h.country].filter(Boolean).join(', ');
       const rttStr = h.rtt ? h.rtt + ' ms' : '';
       const orgStr = h.net ? [h.net.name, h.net.info_type].filter(Boolean).join(' · ') : '';
-      return `#${h.hop}  ${h.ip}\n${[locStr, rttStr].filter(Boolean).join('  ·  ')}${orgStr ? '\n' + orgStr : ''}`;
+      return `${h.origin ? 'Origin' : '#' + h.hop}  ${h.ip}\n${[locStr, rttStr].filter(Boolean).join('  ·  ')}${orgStr ? '\n' + orgStr : ''}`;
     }
 
     function addMarker(hop) {
@@ -519,13 +561,15 @@
       hop.normLon = normLon;
 
       const el = document.createElement('div');
-      el.className = 'hop-marker';
-      el.textContent = hop.hop;
+      el.className = hop.origin ? 'hop-marker origin' : 'hop-marker';
+      el.textContent = hop.origin ? 'π' : hop.hop;
       const m = new maplibregl.Marker({ element: el }).setLngLat([normLon, hop.lat]).addTo(map);
-      const popup = new maplibregl.Popup({ closeButton: false, closeOnClick: false, className: 'hop-popup', offset: 14 });
-      el.addEventListener('mouseenter', () => popup.setLngLat(m.getLngLat()).setText(hopTooltip(hop)).addTo(map));
-      el.addEventListener('mouseleave', () => popup.remove());
-      el.addEventListener('click', () => setActive(hop.hop));
+      el.addEventListener('mouseenter', () => {
+        if (focusedHop === hop.hop) return;
+        hoverPopup.setLngLat(m.getLngLat()).setText(hopTooltip(hop)).addTo(map);
+      });
+      el.addEventListener('mouseleave', () => hoverPopup.remove());
+      el.addEventListener('click', () => focusHop(hop.hop));
       markers.push(m);
       markersByHop.set(hop.hop, { marker: m, hop });
 
@@ -556,25 +600,22 @@
       list.querySelector('.latest')?.classList.remove('latest');
 
       const row = document.createElement('div');
-      const hasGeo = hop.lat && hop.lon;
+      const hasGeo = hop.local || (hop.lat && hop.lon);
       row.className = `hop-row${hop.timeout ? ' timeout' : ''}${hasGeo ? ' geo' : ''} latest`;
       row.id = `hop-row-${hop.hop}`;
 
-      const loc = [hop.city, hop.country].filter(Boolean).join(', ') || '—';
+      const loc = hop.local ? 'Local' : [hop.city, hop.country].filter(Boolean).join(', ') || '—';
       const ip  = hop.timeout ? '*' : (hop.ip || '?');
       const rtt = hop.rtt ? hop.rtt + 'ms' : '—';
 
       row.innerHTML = `
-        <span class="hop-num">${hop.hop}</span>
+        <span class="hop-num">${hop.origin ? 'π' : hop.hop}</span>
         <span class="hop-ip">${ip}</span>
         <span class="hop-rtt">${rtt}</span>
         <span class="hop-loc"><span class="hop-type" id="hop-type-${hop.hop}"></span>${loc}</span>
       `;
       if (hasGeo) {
-        row.addEventListener('click', () => {
-          setActive(hop.hop);
-          map.flyTo({ center: [hop.normLon ?? hop.lon, hop.lat], zoom: 8, duration: 1000 });
-        });
+        row.addEventListener('click', () => focusHop(hop.hop));
       }
       list.appendChild(row);
       list.scrollTop = list.scrollHeight;
@@ -655,18 +696,15 @@
     function setStatus(s, text) {
       statusDot.className = 'status-dot' + (s === 'running' ? ' running' : '');
       statusText.textContent = text;
-      runBtn.disabled = s === 'running';
       runBtn.textContent = s === 'running' ? 'Stop' : 'Run';
     }
 
     // ── Run / Stop ─────────────────────────────────────────────────
     const targetInput = document.getElementById('targetInput');
 
-    function stopTrace() {
+    function endTrace(text) {
       if (evtSource) { evtSource.close(); evtSource = null; }
-      setStatus('idle', 'Stopped');
-      runBtn.disabled = false;
-      runBtn.textContent = 'Run';
+      setStatus('idle', text);
     }
 
     function startTrace() {
@@ -677,46 +715,33 @@
       clearTrace();
       setStatus('running', `Tracing ${target}`);
 
-      // Change run button to stop
-      runBtn.textContent = 'Stop';
-      runBtn.disabled = false;
-      runBtn.onclick = stopTrace;
-
       let hopCount = 0;
       evtSource = new EventSource(`${API}/api/tracer?target=${encodeURIComponent(target)}`);
+
+      // The server's own location: hop 0, and the anchor for private hops.
+      evtSource.addEventListener('origin', (e) => {
+        originHop = { ...JSON.parse(e.data), hop: 0, origin: true };
+        addHopRow(originHop);
+        addMarker(originHop);
+      });
 
       evtSource.onmessage = (e) => {
         const hop = JSON.parse(e.data);
         hopCount++;
+        if (!hop.timeout && !hop.lat && originHop && PRIVATE_IP.test(hop.ip || '')) {
+          hop.local = true;
+          markersByHop.set(hop.hop, { marker: markersByHop.get(0).marker, hop });
+        }
         addHopRow(hop);
         if (hop.lat && hop.lon) addMarker(hop);
         statusText.textContent = `Hop ${hop.hop}…`;
       };
 
-      evtSource.addEventListener('done', () => {
-        evtSource.close(); evtSource = null;
-        setStatus('idle', `Done — ${hopCount} hops`);
-        runBtn.textContent = 'Run';
-        runBtn.onclick = startTrace;
-      });
-
-      evtSource.addEventListener('error', (e) => {
-        evtSource.close(); evtSource = null;
-        setStatus('idle', 'Error');
-        runBtn.textContent = 'Run';
-        runBtn.onclick = startTrace;
-      });
-
-      evtSource.onerror = () => {
-        if (!evtSource) return;
-        evtSource.close(); evtSource = null;
-        setStatus('idle', `Done — ${hopCount} hops`);
-        runBtn.textContent = 'Run';
-        runBtn.onclick = startTrace;
-      };
+      evtSource.addEventListener('done', () => endTrace(`Done — ${hopCount} hops`));
+      evtSource.addEventListener('error', () => endTrace('Error'));
     }
 
-    runBtn.addEventListener('click', startTrace);
+    runBtn.addEventListener('click', () => evtSource ? endTrace('Stopped') : startTrace());
 
     targetInput.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') startTrace();
