@@ -9,6 +9,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/krapie/play-api/db"
 	"github.com/krapie/play-api/handlers"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 func main() {
@@ -32,6 +33,7 @@ func main() {
 	r.Use(middleware.Recoverer)
 	r.Use(cors)
 
+	r.Handle("/metrics", promhttp.Handler()) // internal only: the gateway answers 404 for /metrics
 	r.Get("/healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("ok"))
 	})
